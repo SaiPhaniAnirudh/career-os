@@ -95,11 +95,16 @@ export function renderLogin(container) {
     const errorEl = container.querySelector('#login-error');
     const submitBtn = container.querySelector('#login-submit-btn');
 
-    const email = container.querySelector('#login-email').value.trim();
-    const password = container.querySelector('#login-password').value;
+    const emailInput = container.querySelector('#login-email');
+    const passwordInput = container.querySelector('#login-password');
+    if (!emailInput || !passwordInput) return;
+
+    const email = emailInput.value.trim();
+    const password = passwordInput.value;
 
     if (isSignUp) {
-      const confirm = container.querySelector('#login-confirm').value;
+      const confirmInput = container.querySelector('#login-confirm');
+      const confirm = confirmInput ? confirmInput.value : '';
       if (password !== confirm) {
         errorEl.textContent = 'Passwords do not match.';
         errorEl.style.display = 'block';
