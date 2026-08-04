@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- SEO -->
+  <title>Career OS — AI-Powered Career Platform</title>
+  <meta name="description" content="Your AI-powered career command center. Match resumes to job descriptions, practice mock interviews with AI feedback, and track applications — all in one place." />
+  <meta name="theme-color" content="#0a0a0f" />
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+  <!-- Preconnect to Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+</head>
+<body>
+  <div id="app">
+    <!-- Sidebar (hidden on login page) -->
+    <aside class="sidebar" id="sidebar" style="display:none"></aside>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <!-- Mobile nav bar -->
+    <div class="mobile-nav" id="mobile-nav" style="display:none">
+      <button class="mobile-nav-toggle" id="mobile-nav-toggle">☰</button>
+      <div class="sidebar-logo" style="border:none;padding:0;margin-left:var(--space-3)">
+        <div class="sidebar-logo-icon" style="width:28px;height:28px;font-size:var(--text-xs)">C</div>
+        <span style="font-size:var(--text-base)">Career OS</span>
+      </div>
+    </div>
+
+    <!-- Main content area (router renders pages here) -->
+    <main id="app-main"></main>
+  </div>
+
+  <script type="module" src="/main.js"></script>
+</body>
+</html>

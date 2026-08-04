@@ -10,7 +10,10 @@ from routes.interview import interview_bp
 
 def create_app():
     app = Flask(__name__)
-    CORS(app)
+    CORS(app, origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ], supports_credentials=True)
 
     register_error_handlers(app)
 

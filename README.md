@@ -1,34 +1,59 @@
 # Career OS
 
-An AI-powered career & placement platform — resume/JD matching, mock interviews, skill-gap tracking, and application tracking in one place.
+An AI-powered career & placement platform — resume/JD matching, mock interviews, skill-gap tracking, and application tracking in one place. Built for anyone in the world who's job-seeking or switching careers.
 
-Successor to [NutriTrack], built on the same zero-budget stack philosophy: Flask + Supabase + Ollama-hosted LLM, deployable for free.
+## Stack
+
+- **Backend:** Flask + Supabase (Postgres + Auth + RLS) + Groq API (Llama 3.3 70B)
+- **Frontend:** Vite + Vanilla JS/CSS (dark glassmorphic SPA)
+- **Auth:** Supabase JWT (email + password)
+- **Deployment:** Zero-budget — free Supabase tier + free Groq API tier
 
 ## Status
 
-Phases 0–2 scaffolded:
-- **Phase 0** — repo, Supabase project, schema, RLS ✅
-- **Phase 1** — Application tracker (full CRUD) + Resume/JD ingestion + keyword-overlap matcher (heuristic placeholder ahead of the embedding-based RAG matcher) ✅
-- **Phase 2** — Mock interview engine (LLM-driven, via Ollama) ✅ scaffolded, needs a deployed Ollama endpoint to actually run
+- **Phase 0** — Repo, Supabase project, schema, RLS ✅
+- **Phase 1** — Application tracker (full CRUD + kanban) + Resume/JD ingestion + keyword-overlap matcher ✅
+- **Phase 2** — Mock interview engine (LLM-driven via Groq) ✅
+- **Frontend** — Full premium SPA (login, dashboard, kanban, matcher, chat interview) ✅
 - **Phase 3** — Skill gap tracker — not started
 - **Phase 4** — Peer matchmaking (stretch) — not started
 
-## Backend setup
+## Quick start
+
+### Backend
 
 ```bash
 cd backend
-python3 -m venv venv
-source venv/bin/activate
+python -m venv venv
+venv\Scripts\activate        # Windows
 pip install -r requirements.txt
-cp .env.example .env   # fill in SUPABASE_URL / SUPABASE_KEY if different
+copy .env.example .env       # fill in GROQ_API_KEY
 python app.py
 ```
 
 Health check: `GET http://localhost:5000/api/health`
 
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open: `http://localhost:5173`
+
 ## Environment variables
 
-See `backend/.env.example`. `SUPABASE_URL` and `SUPABASE_KEY` are pre-filled for the `career-os` Supabase project (using the public anon key — safe to commit, RLS enforces per-user access).
+See `backend/.env.example`:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `SUPABASE_URL` | ✅ | Supabase project URL |
+| `SUPABASE_KEY` | ✅ | Supabase anon (public) key |
+| `GROQ_API_KEY` | ✅ | Free Groq API key from [console.groq.com](https://console.groq.com) |
+| `GROQ_MODEL` | | Default: `llama-3.3-70b-versatile` |
+| `FLASK_ENV` | | Default: `development` |
 
 ## API surface
 
@@ -50,11 +75,21 @@ All routes except `/api/health` require `Authorization: Bearer <supabase-jwt>`.
 
 ## Database
 
-Tables: `resumes`, `job_descriptions`, `matches`, `interview_sessions`, `applications` — all with Row Level Security so each user only ever sees their own rows. Schema lives in Supabase migrations (see project dashboard).
+Tables: `resumes`, `job_descriptions`, `matches`, `interview_sessions`, `applications` — all with Row Level Security so each user only ever sees their own rows.
+
+## Frontend pages
+
+| Page | Route | Description |
+|------|-------|-------------|
+| Login | `#/login` | Split-screen auth (sign-in / sign-up) |
+| Dashboard | `#/dashboard` | Stats overview, quick actions, recent activity |
+| Applications | `#/applications` | Kanban board with drag-and-drop stage management |
+| Matcher | `#/matcher` | Resume upload + JD paste → animated match score + keyword analysis |
+| Interview | `#/interview` | Chat-style mock interview with AI + feedback |
 
 ## Next steps
 
-1. Deploy the Ollama LLM endpoint (Hugging Face Spaces, same setup as NutriTrack)
-2. Swap the Phase 1 keyword-overlap matcher for embedding-based similarity (pgvector columns are already in place)
-3. Build the frontend (PWA, same pattern as NutriTrack)
-4. Phase 3: skill-gap tracker (derives mostly from existing match data)
+1. Get a free Groq API key and add it to `.env`
+2. Phase 3: Skill-gap tracker (derives from match data)
+3. Deploy frontend (Vercel / Netlify / GitHub Pages)
+4. Add OAuth providers (Google, GitHub)

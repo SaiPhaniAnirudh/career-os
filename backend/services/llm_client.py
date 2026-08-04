@@ -4,25 +4,36 @@ from config import Config
 from services.errors import ApiError
 
 _TIMEOUT_SECONDS = 30
+_GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 
 def generate(prompt, system=None):
-    """Calls the Ollama-hosted model. Raises ApiError(503) if unreachable
-    instead of letting the request crash — the frontend can show a clean
+    """Calls the Groq-hosted LLM via its OpenAI-compatible endpoint.
+
+    Raises ApiError(503) if unreachable so the frontend can show a clean
     'AI service unavailable' message rather than a stack trace.
     """
-    payload = {
-        "model": Config.OLLAMA_MODEL,
-        "prompt": prompt,
-        "stream": False,
-    }
+    messages = []
     if system:
-        payload["system"] = system
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": prompt})
+
+    payload = {
+        "model": Config.GROQ_MODEL,
+        "messages": messages,
+        "temperature": 0.7,
+        "max_tokens": 1024,
+    }
+    headers = {
+        "Authorization": f"Bearer {Config.GROQ_API_KEY}",
+        "Content-Type": "application/json",
+    }
 
     try:
         resp = requests.post(
-            f"{Config.OLLAMA_BASE_URL}/api/generate",
+            _GROQ_URL,
             json=payload,
+            headers=headers,
             timeout=_TIMEOUT_SECONDS,
         )
         resp.raise_for_status()
@@ -33,4 +44,4 @@ def generate(prompt, system=None):
         ) from exc
 
     data = resp.json()
-    return data.get("response", "").strip()
+    return data["choices"][0]["message"]["content"].strip()
