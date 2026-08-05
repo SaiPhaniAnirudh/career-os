@@ -64,6 +64,7 @@ function renderBoard(container, apps) {
   STAGES.forEach(stage => {
     const zone = container.querySelector(`.kanban-drop-zone[data-stage="${stage}"]`);
     const countEl = container.querySelector(`[data-count="${stage}"]`);
+    if (!zone || !countEl) return;
     const stageApps = apps.filter(a => a.stage === stage);
 
     countEl.textContent = stageApps.length;

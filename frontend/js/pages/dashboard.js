@@ -70,6 +70,7 @@ function renderStats(container, apps) {
   });
 
   const statsEl = container.querySelector('#dashboard-stats');
+  if (!statsEl) return;
   statsEl.innerHTML = `
     <div class="glass-card-static dashboard-stat slide-up">
       <div class="dashboard-stat-header">
@@ -107,6 +108,7 @@ function renderStats(container, apps) {
 
 function renderActivity(container, apps) {
   const activityEl = container.querySelector('#activity-list');
+  if (!activityEl) return;
   const recent = apps.slice(0, 5);
 
   if (recent.length === 0) {

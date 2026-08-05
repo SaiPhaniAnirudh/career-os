@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 // These match the values in backend/.env.example — the anon key is safe to
 // expose client-side since RLS enforces per-user access.
 const SUPABASE_URL = 'https://dsfgnizwhzzadzurdrna.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_1aNzGrzAx63vSOQVBUIxZg_uYHlbT6h';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzZmduaXp3aHp6YWR6dXJkcm5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3NjUxNzgsImV4cCI6MjEwMTM0MTE3OH0.4rYOrmZ9mYJi9wHejdYW74WljAXSs71F6-QZpCcIsco';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
