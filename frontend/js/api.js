@@ -1,7 +1,10 @@
 // ─── Career OS: API Client ───
 import { getToken } from './auth.js';
 
-const API_BASE = 'http://localhost:5000/api';
+// VITE_API_BASE lets prod builds point at the deployed backend without a
+// code change — set it in a .env file (Vite convention) or your host's
+// build-time env vars. Falls back to localhost for local dev.
+const API_BASE = `${import.meta.env.VITE_API_BASE || 'http://localhost:5000'}/api`;
 
 /**
  * Authenticated fetch wrapper. Automatically attaches the Supabase JWT

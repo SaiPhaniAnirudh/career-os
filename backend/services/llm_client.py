@@ -13,6 +13,12 @@ def generate(prompt, system=None):
     Raises ApiError(503) if unreachable so the frontend can show a clean
     'AI service unavailable' message rather than a stack trace.
     """
+    if not Config.GROQ_API_KEY:
+        raise ApiError(
+            "The AI service isn't configured yet (missing GROQ_API_KEY).",
+            status_code=503,
+        )
+
     messages = []
     if system:
         messages.append({"role": "system", "content": system})
