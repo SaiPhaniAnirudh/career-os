@@ -42,3 +42,13 @@ jobs:
         run: |
           cd frontend
           npm run build
+
+  deploy-render:
+    name: Trigger Render Deploy
+    needs: [backend-tests, frontend-build]
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render Deploy Hook
+        run: |
+          curl -s -X POST "https://api.render.com/deploy/srv-dafdsev40ujc73ast9jg?key=zb7CbVOlcr8"
