@@ -222,6 +222,10 @@ function openProfileModal(container) {
     title: profile.id ? 'Edit Your Match Profile' : 'Create Your Match Profile',
     bodyHTML: `
       <div class="input-group">
+        <label for="peer-name">Display Name</label>
+        <input class="input" id="peer-name" placeholder="e.g. Anirudh or Alex M." value="${escapeAttr(profile.display_name || '')}">
+      </div>
+      <div class="input-group">
         <label for="peer-role">Target Role *</label>
         <input class="input" id="peer-role" placeholder="e.g. Senior Backend Engineer, Frontend Specialist..." value="${escapeAttr(profile.target_role || '')}" required>
       </div>
@@ -270,6 +274,7 @@ function openProfileModal(container) {
 
       try {
         const updated = await savePeerProfile({
+          display_name: document.querySelector('#peer-name')?.value.trim() || undefined,
           target_role,
           target_company: document.querySelector('#peer-company').value.trim(),
           skills: document.querySelector('#peer-skills').value.trim(),

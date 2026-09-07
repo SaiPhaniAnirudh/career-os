@@ -33,8 +33,23 @@ def save_profile():
     elif isinstance(skills, list):
         skills = [str(s).strip().lower() for s in skills if str(s).strip()]
 
+    display_name = (body.get("display_name") or "").strip()
+    contact_email = (body.get("contact_email") or "").strip() or None
+    if not display_name:
+        if contact_email and "@" in contact_email:
+            display_name = contact_email.split("@")[0].capitalize()
+        else:
+            try:
+                sb_auth = get_supabase()
+                user_res = sb_auth.auth.get_user(g.user_token)
+                meta = getattr(user_res.user, "user_metadata", {}) or {}
+                display_name = meta.get("full_name") or meta.get("name") or (user_res.user.email.split("@")[0].capitalize() if user_res.user.email else "Candidate")
+            except Exception:
+                display_name = "Candidate"
+
     base_profile = {
         "user_id": user_id,
+        "display_name": display_name,
         "target_role": target_role,
         "skills": skills,
         "bio": (body.get("bio") or "").strip(),
@@ -43,7 +58,7 @@ def save_profile():
         "target_company": (body.get("target_company") or "").strip(),
         "experience_level": body.get("experience_level") or "Mid-Level",
         "availability": body.get("availability") or "Flexible",
-        "contact_email": (body.get("contact_email") or "").strip() or None,
+        "contact_email": contact_email,
     }
     full_profile = {**base_profile, **extended_fields}
 
