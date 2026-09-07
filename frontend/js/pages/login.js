@@ -153,28 +153,42 @@ export function renderLogin(container) {
     submitBtn.innerHTML = '<span class="spinner" style="width:18px;height:18px;border-width:2px"></span>';
 
     try {
-      const { error } = isSignUp
-        ? await signUp(email, password)
-        : await signIn(email, password);
-
-      if (error) {
-        errorEl.textContent = error.message || 'Authentication failed.';
-        errorEl.style.display = 'block';
-        submitBtn.disabled = false;
-        submitBtn.textContent = isSignUp ? 'Create Account' : 'Sign In';
-        return;
-      }
-
       if (isSignUp) {
+        const { session, error } = await signUp(email, password);
+
+        if (error) {
+          errorEl.textContent = error.message || 'Authentication failed.';
+          errorEl.style.display = 'block';
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Create Account';
+          return;
+        }
+
+        // If session was granted immediately (Confirm email is off)
+        if (session) {
+          navigate('/dashboard');
+          return;
+        }
+
+        // Try direct sign-in
+        const { error: signInErr } = await signIn(email, password);
+        if (!signInErr) {
+          navigate('/dashboard');
+          return;
+        }
+
+        // Only show confirmation card if email confirmation is enforced
         errorEl.style.display = 'none';
-        // Show success message for email confirmation
         const formEl = container.querySelector('.login-form');
         formEl.innerHTML = `
           <div class="empty-state" style="padding:var(--space-6)">
             <div class="empty-state-icon">📧</div>
             <h3>Check your email</h3>
             <p>We sent a confirmation link to <strong>${email}</strong>. Click it to activate your account, then sign in.</p>
-            <button class="btn btn-secondary" id="back-to-signin-btn">Back to Sign In</button>
+            <p style="font-size:var(--text-xs);color:var(--text-tertiary);margin-top:var(--space-2)">
+              (Tip: If using free Supabase without custom SMTP, disable 'Confirm email' in Supabase Auth settings to log in instantly).
+            </p>
+            <button class="btn btn-secondary" id="back-to-signin-btn" style="margin-top:var(--space-3)">Back to Sign In</button>
           </div>
         `;
         formEl.querySelector('#back-to-signin-btn')?.addEventListener('click', () => {
@@ -182,6 +196,14 @@ export function renderLogin(container) {
           render();
         });
       } else {
+        const { error } = await signIn(email, password);
+        if (error) {
+          errorEl.textContent = error.message || 'Authentication failed.';
+          errorEl.style.display = 'block';
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Sign In';
+          return;
+        }
         navigate('/dashboard');
       }
     } catch (err) {

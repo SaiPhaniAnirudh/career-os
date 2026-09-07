@@ -20,10 +20,10 @@ export async function getUser() {
   return data?.user ?? null;
 }
 
-/** Sign up with email + password. Returns { user, error }. */
+/** Sign up with email + password. Returns { user, session, error }. */
 export async function signUp(email, password) {
   const { data, error } = await supabase.auth.signUp({ email, password });
-  return { user: data?.user, error };
+  return { user: data?.user, session: data?.session, error };
 }
 
 /** Sign in with email + password. Returns { user, error }. */
