@@ -33,31 +33,49 @@ def save_profile():
     elif isinstance(skills, list):
         skills = [str(s).strip().lower() for s in skills if str(s).strip()]
 
-    profile_data = {
+    base_profile = {
         "user_id": user_id,
         "target_role": target_role,
-        "target_company": (body.get("target_company") or "").strip(),
         "skills": skills,
+        "bio": (body.get("bio") or "").strip(),
+    }
+    extended_fields = {
+        "target_company": (body.get("target_company") or "").strip(),
         "experience_level": body.get("experience_level") or "Mid-Level",
         "availability": body.get("availability") or "Flexible",
-        "bio": (body.get("bio") or "").strip(),
         "contact_email": (body.get("contact_email") or "").strip() or None,
     }
+    full_profile = {**base_profile, **extended_fields}
 
     sb = get_supabase()
-    # Check if profile exists for upsert behavior
-    existing = sb.table("peer_profiles").select("id").eq("user_id", user_id).execute()
-    if existing.data:
-        res = (
-            sb.table("peer_profiles")
-            .update(profile_data)
-            .eq("user_id", user_id)
-            .execute()
-        )
-    else:
-        res = sb.table("peer_profiles").insert(profile_data).execute()
+    # Check if profile exists for upsert behavior (primary key is user_id)
+    existing = sb.table("peer_profiles").select("user_id").eq("user_id", user_id).execute()
+    try:
+        if existing.data:
+            res = (
+                sb.table("peer_profiles")
+                .update(full_profile)
+                .eq("user_id", user_id)
+                .execute()
+            )
+        else:
+            res = sb.table("peer_profiles").insert(full_profile).execute()
+    except Exception as exc:
+        err_msg = str(getattr(exc, "message", exc)).lower()
+        if "does not exist" in err_msg or getattr(exc, "code", "") == "42703":
+            if existing.data:
+                res = (
+                    sb.table("peer_profiles")
+                    .update(base_profile)
+                    .eq("user_id", user_id)
+                    .execute()
+                )
+            else:
+                res = sb.table("peer_profiles").insert(base_profile).execute()
+        else:
+            raise
 
-    return jsonify(res.data[0] if res.data else profile_data), 200
+    return jsonify(res.data[0] if res.data else full_profile), 200
 
 
 @peers_bp.get("")

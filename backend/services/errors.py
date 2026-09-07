@@ -25,12 +25,21 @@ def register_error_handlers(app):
         @app.errorhandler(PostgrestError)
         def handle_postgrest_error(err):
             app.logger.warning(f"PostgREST error: {err}")
-            err_dict = err.args[0] if err.args and isinstance(err.args[0], dict) else {}
-            code = err_dict.get("code", "")
-            msg = err_dict.get("message", "")
+            code = str(getattr(err, "code", "") or "")
+            msg = str(getattr(err, "message", "") or "")
+            if not code and hasattr(err, "json"):
+                try:
+                    payload = err.json()
+                    if isinstance(payload, dict):
+                        code = str(payload.get("code", ""))
+                        msg = str(payload.get("message", ""))
+                except Exception:
+                    pass
+            if not msg and err.args:
+                msg = str(err.args[0])
             if code == "42501":
                 return jsonify({"error": "Database permission denied. Please log in again to refresh your credentials."}), 403
-            if code == "PGRST205" or "schema cache" in msg:
+            if code == "PGRST205" or "schema cache" in msg or code == "42703":
                 return jsonify({"error": f"Database schema mismatch: {msg}"}), 503
             return jsonify({"error": msg or "Database request failed."}), 500
     except ImportError:

@@ -162,19 +162,33 @@ def create_application():
     url = (body.get("url") or "").strip() or None
     notes = (body.get("notes") or "").strip() or None
 
-    row = {
+    base_row = {
         "user_id": user_id,
         "company": company,
         "role": role,
         "stage": stage,
         "deadline": deadline,
         "notes": notes,
-        "salary": salary,
-        "location": location,
-        "url": url,
     }
+    extended = {}
+    if salary is not None:
+        extended["salary"] = salary
+    if location is not None:
+        extended["location"] = location
+    if url is not None:
+        extended["url"] = url
+
+    full_row = {**base_row, **extended}
     sb = get_supabase()
-    res = sb.table("applications").insert(row).execute()
+    try:
+        res = sb.table("applications").insert(full_row).execute()
+    except Exception as exc:
+        err_msg = str(getattr(exc, "message", exc)).lower()
+        if "does not exist" in err_msg or getattr(exc, "code", "") == "42703":
+            # Remote schema lacks extended columns (salary/location/url) — fall back to base fields
+            res = sb.table("applications").insert(base_row).execute()
+        else:
+            raise
     return jsonify(res.data[0]), 201
 
 
@@ -196,13 +210,29 @@ def update_application(application_id):
         updates["deadline"] = None
 
     sb = get_supabase()
-    res = (
-        sb.table("applications")
-        .update(updates)
-        .eq("id", application_id)
-        .eq("user_id", user_id)
-        .execute()
-    )
+    try:
+        res = (
+            sb.table("applications")
+            .update(updates)
+            .eq("id", application_id)
+            .eq("user_id", user_id)
+            .execute()
+        )
+    except Exception as exc:
+        err_msg = str(getattr(exc, "message", exc)).lower()
+        if "does not exist" in err_msg or getattr(exc, "code", "") == "42703":
+            core_updates = {k: v for k, v in updates.items() if k in {"company", "role", "stage", "deadline", "notes"}}
+            if not core_updates:
+                return jsonify({"id": application_id, **updates})
+            res = (
+                sb.table("applications")
+                .update(core_updates)
+                .eq("id", application_id)
+                .eq("user_id", user_id)
+                .execute()
+            )
+        else:
+            raise
     if not res.data:
         raise ApiError("Application not found.", status_code=404)
     return jsonify(res.data[0])
