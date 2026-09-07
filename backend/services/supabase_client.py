@@ -9,8 +9,9 @@ from config import Config
 def _get_base_client() -> Client:
     """Returns a cached base Supabase client. Uses service role key if provided, else anon key."""
     Config.validate()
-    key = Config.SUPABASE_SERVICE_ROLE_KEY or Config.SUPABASE_KEY
-    return create_client(Config.SUPABASE_URL, key)
+    url = Config.SUPABASE_URL.strip()
+    key = (Config.SUPABASE_SERVICE_ROLE_KEY or Config.SUPABASE_KEY).strip()
+    return create_client(url, key)
 
 
 def get_supabase() -> Client:
