@@ -1,4 +1,4 @@
-name: Keep-Alive Bot (Render & Supabase)
+name: Unified Keep-Alive Bot (Career OS & NutriTrack)
 
 on:
   schedule:
@@ -9,18 +9,21 @@ on:
 
 jobs:
   keep-alive:
-    name: Ping Render Backend & Supabase
+    name: Ping Career OS & NutriTrack
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Backend & Database
+      - name: Ping Career OS Backend & Supabase
         run: |
-          echo "Sending keep-alive ping to Render & Supabase..."
-          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}\nTIME_TOTAL:%{time_total}s\n" \
+          echo "=== Pinging Career OS ==="
+          RESP_CAREER=$(curl -s -w "\nHTTP_STATUS:%{http_code}\nTIME_TOTAL:%{time_total}s\n" \
             --max-time 60 \
             "https://career-os-backend-i375.onrender.com/api/health?ping_db=true")
-          echo "$RESPONSE"
-          if echo "$RESPONSE" | grep -q "HTTP_STATUS:200"; then
-            echo "Success: Render and Supabase are active and warm."
-          else
-            echo "Warning: Non-200 response received or backend was waking up from cold start."
-          fi
+          echo "$RESP_CAREER"
+
+      - name: Ping NutriTrack Backend & Supabase
+        run: |
+          echo "=== Pinging NutriTrack ==="
+          RESP_NUTRI=$(curl -s -w "\nHTTP_STATUS:%{http_code}\nTIME_TOTAL:%{time_total}s\n" \
+            --max-time 60 \
+            "https://nutritrack-k96f.onrender.com/api/health")
+          echo "$RESP_NUTRI"
