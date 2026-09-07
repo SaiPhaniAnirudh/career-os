@@ -1,6 +1,9 @@
-# Career OS
+# Career OS — AI-Powered Career Platform
 
-An AI-powered career & placement platform — resume/JD matching, mock interviews, skill-gap tracking, and application tracking in one place. Built for anyone in the world who's job-seeking or switching careers.
+🌐 **Live App:** [https://career-os-two-woad.vercel.app](https://career-os-two-woad.vercel.app)  
+⚡ **Live API:** [https://career-os-backend-i375.onrender.com/api/health](https://career-os-backend-i375.onrender.com/api/health)
+
+An AI-powered career & placement platform — resume/JD matching, mock interviews with voice, AI bullet optimization (Google XYZ / STAR), conversion funnel analytics, skill-gap tracking, and application tracking in one place.
 
 ## Stack
 
