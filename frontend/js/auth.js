@@ -10,7 +10,17 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 /** Get the current session's access token for API calls. */
 export async function getToken() {
-  const { data } = await supabase.auth.getSession();
+  let { data } = await supabase.auth.getSession();
+  if (!data?.session) {
+    try {
+      const refreshed = await supabase.auth.refreshSession();
+      if (refreshed?.data?.session) {
+        data = refreshed.data;
+      }
+    } catch {
+      // Refresh failed or no session to refresh
+    }
+  }
   return data?.session?.access_token ?? null;
 }
 

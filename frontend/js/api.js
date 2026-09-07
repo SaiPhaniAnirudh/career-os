@@ -26,8 +26,23 @@ async function apiFetch(path, options = {}) {
     headers['Content-Type'] = 'application/json';
   }
 
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
-  const data = await res.json();
+  let res;
+  try {
+    res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  } catch {
+    throw new Error('Network error: Unable to reach the server. The backend may be spinning up from cold start. Please wait 30 seconds and try again.');
+  }
+
+  let data = {};
+  try {
+    data = await res.json();
+  } catch {
+    data = {
+      error: res.status === 502 || res.status === 503
+        ? 'Backend service is starting up from cold start. Please wait a few moments and retry.'
+        : `Server returned status ${res.status}`,
+    };
+  }
 
   if (!res.ok) {
     if (res.status === 401) {

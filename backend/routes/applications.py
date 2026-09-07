@@ -156,16 +156,22 @@ def create_application():
     if stage not in ALLOWED_STAGES:
         raise ApiError(f"'stage' must be one of {sorted(ALLOWED_STAGES)}.")
 
+    deadline = (body.get("deadline") or "").strip() or None
+    salary = (body.get("salary") or "").strip() or None
+    location = (body.get("location") or "").strip() or None
+    url = (body.get("url") or "").strip() or None
+    notes = (body.get("notes") or "").strip() or None
+
     row = {
         "user_id": user_id,
         "company": company,
         "role": role,
         "stage": stage,
-        "deadline": body.get("deadline"),
-        "notes": body.get("notes"),
-        "salary": body.get("salary"),
-        "location": body.get("location"),
-        "url": body.get("url"),
+        "deadline": deadline,
+        "notes": notes,
+        "salary": salary,
+        "location": location,
+        "url": url,
     }
     sb = get_supabase()
     res = sb.table("applications").insert(row).execute()
@@ -185,6 +191,9 @@ def update_application(application_id):
     updates = {k: v for k, v in body.items() if k in updatable_fields}
     if not updates:
         raise ApiError("No valid fields to update.")
+
+    if "deadline" in updates and not (updates["deadline"] or "").strip():
+        updates["deadline"] = None
 
     sb = get_supabase()
     res = (

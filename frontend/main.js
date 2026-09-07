@@ -5,7 +5,7 @@ import './css/components.css';
 import './css/pages.css';
 
 import { route, startRouter, navigate, currentRoute } from './js/router.js';
-import { onAuthChange, getUser } from './js/auth.js';
+import { onAuthChange, getUser, supabase } from './js/auth.js';
 import { store } from './js/state.js';
 import { renderSidebar, openMobileSidebar, closeMobileSidebar } from './js/components/sidebar.js';
 import { renderLogin } from './js/pages/login.js';
@@ -97,8 +97,16 @@ route('/peers', async (container) => {
 
 // ── Initialize ──
 async function init() {
-  // Check for existing session
-  const user = await getUser();
+  const isOAuthRedirect = window.location.hash.includes('access_token=') || window.location.hash.includes('refresh_token=');
+
+  let user = null;
+  if (isOAuthRedirect) {
+    // Wait for Supabase client to parse the OAuth tokens from the hash
+    const { data } = await supabase.auth.getSession();
+    user = data?.session?.user ?? (await getUser());
+  } else {
+    user = await getUser();
+  }
   store.set('user', user);
 
   // Listen for auth changes
@@ -114,8 +122,10 @@ async function init() {
   document.getElementById('sidebar-overlay')?.addEventListener('click', closeMobileSidebar);
 
   // Start router
-  if (!user && !PUBLIC_ROUTES.has(currentRoute())) {
+  if (!user && !PUBLIC_ROUTES.has(currentRoute()) && !isOAuthRedirect) {
     navigate('/login');
+  } else if (user && (currentRoute() === '/login' || isOAuthRedirect)) {
+    navigate('/dashboard');
   }
   startRouter('app-main');
 }

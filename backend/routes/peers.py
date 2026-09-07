@@ -136,30 +136,37 @@ def send_request():
         raise ApiError("You cannot send a connection request to yourself.")
 
     sb = get_supabase()
-    # Check for existing request
-    existing = (
-        sb.table("peer_requests")
-        .select("id, status")
-        .eq("sender_id", user_id)
-        .eq("receiver_id", receiver_id)
-        .execute()
-    )
-    if existing.data and existing.data[0]["status"] == "pending":
-        raise ApiError("A pending connection request already exists.", status_code=409)
-
-    res = (
-        sb.table("peer_requests")
-        .insert(
-            {
-                "sender_id": user_id,
-                "receiver_id": receiver_id,
-                "message": message,
-                "status": "pending",
-            }
+    try:
+        # Check for existing request
+        existing = (
+            sb.table("peer_requests")
+            .select("id, status")
+            .eq("sender_id", user_id)
+            .eq("receiver_id", receiver_id)
+            .execute()
         )
-        .execute()
-    )
-    return jsonify(res.data[0] if res.data else {"sender_id": user_id, "receiver_id": receiver_id, "status": "pending"}), 201
+        if existing.data and existing.data[0]["status"] == "pending":
+            raise ApiError("A pending connection request already exists.", status_code=409)
+
+        res = (
+            sb.table("peer_requests")
+            .insert(
+                {
+                    "sender_id": user_id,
+                    "receiver_id": receiver_id,
+                    "message": message,
+                    "status": "pending",
+                }
+            )
+            .execute()
+        )
+        return jsonify(res.data[0] if res.data else {"sender_id": user_id, "receiver_id": receiver_id, "status": "pending"}), 201
+    except ApiError:
+        raise
+    except Exception as exc:
+        if "peer_requests" in str(exc):
+            raise ApiError("Connection requests feature requires database migration (peer_requests table). Please run schema migration in Supabase SQL editor.", status_code=503)
+        raise
 
 
 @peers_bp.get("/requests")
@@ -168,25 +175,29 @@ def list_requests():
     user_id = g.user_id
     sb = get_supabase()
 
-    # Requests received
-    incoming = (
-        sb.table("peer_requests")
-        .select("id, sender_id, status, message, created_at")
-        .eq("receiver_id", user_id)
-        .order("created_at", desc=True)
-        .execute()
-    )
+    try:
+        # Requests received
+        incoming = (
+            sb.table("peer_requests")
+            .select("id, sender_id, status, message, created_at")
+            .eq("receiver_id", user_id)
+            .order("created_at", desc=True)
+            .execute()
+        )
 
-    # Requests sent
-    outgoing = (
-        sb.table("peer_requests")
-        .select("id, receiver_id, status, message, created_at")
-        .eq("sender_id", user_id)
-        .order("created_at", desc=True)
-        .execute()
-    )
+        # Requests sent
+        outgoing = (
+            sb.table("peer_requests")
+            .select("id, receiver_id, status, message, created_at")
+            .eq("sender_id", user_id)
+            .order("created_at", desc=True)
+            .execute()
+        )
 
-    return jsonify({"incoming": incoming.data, "outgoing": outgoing.data})
+        return jsonify({"incoming": incoming.data, "outgoing": outgoing.data})
+    except Exception:
+        # Return empty requests if table does not yet exist
+        return jsonify({"incoming": [], "outgoing": []})
 
 
 @peers_bp.patch("/requests/<request_id>")
@@ -200,14 +211,18 @@ def respond_request(request_id):
         raise ApiError("'status' must be either 'accepted' or 'declined'.")
 
     sb = get_supabase()
-    res = (
-        sb.table("peer_requests")
-        .update({"status": status})
-        .eq("id", request_id)
-        .eq("receiver_id", user_id)
-        .execute()
-    )
-    if not res.data:
-        raise ApiError("Request not found or unauthorized.", status_code=404)
-
-    return jsonify(res.data[0])
+    try:
+        res = (
+            sb.table("peer_requests")
+            .update({"status": status})
+            .eq("id", request_id)
+            .eq("receiver_id", user_id)
+            .execute()
+        )
+        if not res.data:
+            raise ApiError("Request not found or unauthorized.", status_code=404)
+        return jsonify(res.data[0])
+    except ApiError:
+        raise
+    except Exception as exc:
+        raise ApiError(f"Could not update request: {exc}", status_code=500)

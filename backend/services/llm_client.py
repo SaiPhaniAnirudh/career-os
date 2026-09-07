@@ -35,19 +35,35 @@ def generate(prompt, system=None):
         "Content-Type": "application/json",
     }
 
-    try:
-        resp = requests.post(
-            _GROQ_URL,
-            json=payload,
-            headers=headers,
-            timeout=_TIMEOUT_SECONDS,
-        )
-        resp.raise_for_status()
-    except requests.RequestException as exc:
-        raise ApiError(
-            "The AI service is temporarily unavailable. Please try again shortly.",
-            status_code=503,
-        ) from exc
+    # Candidate models in priority order for high availability
+    preferred_model = Config.GROQ_MODEL or "openai/gpt-oss-120b"
+    fallback_models = ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"]
+    models_to_try = [preferred_model] + [m for m in fallback_models if m != preferred_model]
 
-    data = resp.json()
-    return data["choices"][0]["message"]["content"].strip()
+    last_error = None
+    for model_name in models_to_try:
+        payload = {
+            "model": model_name,
+            "messages": messages,
+            "temperature": 0.7,
+            "max_tokens": 1024,
+        }
+        try:
+            resp = requests.post(
+                _GROQ_URL,
+                json=payload,
+                headers=headers,
+                timeout=_TIMEOUT_SECONDS,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                return data["choices"][0]["message"]["content"].strip()
+            # If 404 or other model error, try next fallback
+            last_error = resp.text
+        except requests.RequestException as exc:
+            last_error = str(exc)
+
+    raise ApiError(
+        f"The AI service is temporarily unavailable. Please try again shortly. ({last_error or 'all models failed'})",
+        status_code=503,
+    )

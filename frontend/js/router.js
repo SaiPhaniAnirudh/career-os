@@ -30,6 +30,12 @@ export function startRouter(containerId) {
   }
 
   async function handleRoute() {
+    const rawHash = window.location.hash;
+    if (rawHash.includes('access_token=') || rawHash.includes('refresh_token=')) {
+      // Allow auth system to parse tokens from hash without clobbering
+      return;
+    }
+
     const path = currentRoute();
 
     // Run cleanup from previous page

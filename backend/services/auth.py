@@ -29,6 +29,7 @@ def require_auth(view_func):
             raise ApiError("Invalid or expired session.", status_code=401)
 
         g.user_id = user_res.user.id
+        g.user_token = token
         return view_func(*args, **kwargs)
 
     return wrapper
