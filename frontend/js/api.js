@@ -1,5 +1,6 @@
 // ─── Career OS: API Client ───
-import { getToken } from './auth.js';
+import { getToken, supabase } from './auth.js';
+import { navigate } from './router.js';
 
 // VITE_API_BASE lets prod builds point at the deployed backend without a
 // code change — set it in a .env file (Vite convention) or your host's
@@ -46,7 +47,9 @@ async function apiFetch(path, options = {}) {
 
   if (!res.ok) {
     if (res.status === 401) {
-      throw new Error('Session expired or email unverified. Please Sign Out and sign in with Google or verified credentials.');
+      await supabase.auth.signOut().catch(() => {});
+      setTimeout(() => navigate('/login'), 1500);
+      throw new Error('Your session expired. Please sign in again.');
     }
     throw new Error(data.error || `Request failed (${res.status})`);
   }
