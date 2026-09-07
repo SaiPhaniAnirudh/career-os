@@ -95,6 +95,14 @@ route('/peers', async (container) => {
   await renderPeers(container);
 });
 
+// ── Prewarm Backend & Database ──
+const API_BASE = `${import.meta.env.VITE_API_BASE || 'http://localhost:5000'}/api`;
+try {
+  fetch(`${API_BASE}/health?ping_db=true`, { mode: 'cors' }).catch(() => {});
+} catch {
+  // Ignore prewarm failure
+}
+
 // ── Initialize ──
 async function init() {
   const isOAuthRedirect = window.location.hash.includes('access_token=') || window.location.hash.includes('refresh_token=');

@@ -1,0 +1,26 @@
+name: Keep-Alive Bot (Render & Supabase)
+
+on:
+  schedule:
+    # Run every 14 minutes to prevent Render's 15-minute free tier spin-down
+    - cron: '*/14 * * * *'
+  workflow_dispatch:
+    # Allows manual trigger anytime from GitHub Actions tab
+
+jobs:
+  keep-alive:
+    name: Ping Render Backend & Supabase
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Backend & Database
+        run: |
+          echo "Sending keep-alive ping to Render & Supabase..."
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}\nTIME_TOTAL:%{time_total}s\n" \
+            --max-time 60 \
+            "https://career-os-backend-i375.onrender.com/api/health?ping_db=true")
+          echo "$RESPONSE"
+          if echo "$RESPONSE" | grep -q "HTTP_STATUS:200"; then
+            echo "Success: Render and Supabase are active and warm."
+          else
+            echo "Warning: Non-200 response received or backend was waking up from cold start."
+          fi

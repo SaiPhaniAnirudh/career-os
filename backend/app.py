@@ -1,10 +1,12 @@
 import os
+from datetime import datetime, timezone
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 
 from config import Config
 from services.errors import register_error_handlers
+from services.supabase_client import get_supabase
 from routes.applications import applications_bp
 from routes.matching import matching_bp
 from routes.interview import interview_bp
@@ -14,10 +16,7 @@ from routes.peers import peers_bp
 
 def create_app():
     app = Flask(__name__)
-    # ALLOWED_ORIGINS is a comma-separated env var so prod (GitHub Pages,
-    # Vercel, etc.) can be added without a code change. Vite's dev server
-    # ports are included by default for local development.
-    default_origins = "http://localhost:5173,http://127.0.0.1:5173"
+    default_origins = "http://localhost:5173,http://127.0.0.1:5173,https://career-os-two-woad.vercel.app"
     origins = [
         o.strip()
         for o in os.environ.get("ALLOWED_ORIGINS", default_origins).split(",")
@@ -35,7 +34,23 @@ def create_app():
 
     @app.get("/api/health")
     def health():
-        return jsonify({"status": "ok"})
+        ping_db = request.args.get("ping_db", "").lower() in ("true", "1", "yes")
+        db_status = "skipped"
+        if ping_db:
+            try:
+                sb = get_supabase()
+                # Run lightweight query to touch Supabase and keep the project active
+                sb.table("applications").select("id").limit(1).execute()
+                db_status = "active"
+            except Exception as e:
+                db_status = f"error: {e}"
+
+        return jsonify({
+            "status": "ok",
+            "render": "awake",
+            "supabase": db_status,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })
 
     return app
 
