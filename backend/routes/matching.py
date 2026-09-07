@@ -9,12 +9,32 @@ from services.auth import require_auth
 
 matching_bp = Blueprint("matching", __name__, url_prefix="/api")
 
-# A small stopword list keeps the keyword-overlap heuristic from matching on
-# noise words like "the"/"and". This is intentionally simple for Phase 1 —
-# Phase 2+ swaps this for embedding similarity via the RAG pipeline.
+# Comprehensive stopword list filters out common grammatical words and generic
+# job-posting boilerplate (e.g., "team", "experience", "candidate", "responsibilities")
+# so genuine technical competencies and domain skills are prioritized.
 _STOPWORDS = {
-    "the", "and", "a", "an", "to", "of", "in", "on", "for", "with", "is",
-    "are", "was", "were", "be", "as", "at", "by", "or", "this", "that",
+    # Common English stopwords
+    "the", "and", "a", "an", "to", "of", "in", "on", "for", "with", "is", "are",
+    "was", "were", "be", "been", "being", "have", "has", "had", "do", "does", "did",
+    "as", "at", "by", "or", "this", "that", "these", "those", "from", "up", "out",
+    "into", "over", "after", "before", "between", "under", "again", "further", "then",
+    "once", "here", "there", "when", "where", "why", "how", "all", "any", "both",
+    "each", "few", "more", "most", "other", "some", "such", "no", "nor", "not",
+    "only", "own", "same", "so", "than", "too", "very", "can", "will", "just", "should",
+    "now", "you", "your", "we", "our", "us", "they", "their", "them", "who", "whom",
+    # Common job description boilerplate
+    "about", "across", "also", "ability", "able", "apply", "applicant", "applicants",
+    "benefit", "benefits", "candidate", "candidates", "career", "company", "culture",
+    "degree", "description", "duty", "duties", "employee", "employees", "employer",
+    "environment", "equal", "opportunity", "experience", "experienced", "full", "time",
+    "part", "help", "helping", "include", "includes", "including", "job", "jobs", "join",
+    "joining", "key", "knowledge", "level", "looking", "must", "need", "needed", "needs",
+    "offer", "offers", "offering", "people", "plus", "position", "positions", "preferred",
+    "provide", "provides", "providing", "qualification", "qualifications", "qualified",
+    "related", "requirement", "requirements", "require", "required", "responsibility",
+    "responsibilities", "responsible", "role", "roles", "salary", "seek", "seeking",
+    "skill", "skills", "strong", "successful", "team", "teams", "understand", "understanding",
+    "well", "work", "working", "works", "workplace", "year", "years",
 }
 
 
@@ -25,7 +45,12 @@ def _extract_text_from_pdf(file_storage):
 
 def _tokenize(text):
     words = re.findall(r"[a-zA-Z][a-zA-Z+.#]{1,}", text.lower())
-    return {w for w in words if w not in _STOPWORDS and len(w) > 2}
+    tokens = set()
+    for w in words:
+        cleaned = w.rstrip(".,;:")
+        if cleaned not in _STOPWORDS and len(cleaned) > 2:
+            tokens.add(cleaned)
+    return tokens
 
 
 @matching_bp.post("/resume/upload")

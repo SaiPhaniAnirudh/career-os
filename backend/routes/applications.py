@@ -42,6 +42,9 @@ def create_application():
         "stage": stage,
         "deadline": body.get("deadline"),
         "notes": body.get("notes"),
+        "salary": body.get("salary"),
+        "location": body.get("location"),
+        "url": body.get("url"),
     }
     sb = get_supabase()
     res = sb.table("applications").insert(row).execute()
@@ -57,7 +60,7 @@ def update_application(application_id):
     if "stage" in body and body["stage"] not in ALLOWED_STAGES:
         raise ApiError(f"'stage' must be one of {sorted(ALLOWED_STAGES)}.")
 
-    updatable_fields = {"company", "role", "stage", "deadline", "notes"}
+    updatable_fields = {"company", "role", "stage", "deadline", "notes", "salary", "location", "url"}
     updates = {k: v for k, v in body.items() if k in updatable_fields}
     if not updates:
         raise ApiError("No valid fields to update.")

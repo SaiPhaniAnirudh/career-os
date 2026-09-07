@@ -22,6 +22,7 @@ def make_chainable_table(return_data):
     m.delete.return_value = m
     m.eq.return_value = m
     m.order.return_value = m
+    m.limit.return_value = m
     m.execute.return_value = _fake_execute_result(return_data)
     return m
 
@@ -168,10 +169,130 @@ def test_interview_503_when_groq_key_missing():
     print("test_interview_503_when_groq_key_missing PASSED")
 
 
+def test_application_extended_fields():
+    import app as app_module
+
+    with patch("routes.applications.get_supabase") as mock_sb, \
+         patch("services.auth.get_supabase") as mock_auth_sb:
+
+        fake_user = MagicMock()
+        fake_user.user.id = "u1"
+        mock_auth_sb.return_value.auth.get_user.return_value = fake_user
+
+        created_row = {
+            "id": "app-2",
+            "user_id": "u1",
+            "company": "Stripe",
+            "role": "Staff Engineer",
+            "stage": "applied",
+            "location": "Remote",
+            "salary": "$250k",
+            "url": "https://stripe.com/jobs/123",
+        }
+        mock_sb.return_value.table.return_value = make_chainable_table([created_row])
+
+        client = app_module.app.test_client()
+        headers = {"Authorization": "Bearer faketoken"}
+        r = client.post(
+            "/api/applications",
+            json={
+                "company": "Stripe",
+                "role": "Staff Engineer",
+                "location": "Remote",
+                "salary": "$250k",
+                "url": "https://stripe.com/jobs/123",
+            },
+            headers=headers,
+        )
+        assert r.status_code == 201, r.get_json()
+        assert r.get_json()["location"] == "Remote"
+        assert r.get_json()["salary"] == "$250k"
+
+        r = client.patch(
+            "/api/applications/app-2",
+            json={"location": "San Francisco", "salary": "$260k"},
+            headers=headers,
+        )
+        assert r.status_code == 200, r.get_json()
+
+    print("test_application_extended_fields PASSED")
+
+
+def test_interview_sessions_list():
+    import app as app_module
+
+    with patch("routes.interview.get_supabase") as mock_sb, \
+         patch("services.auth.get_supabase") as mock_auth_sb:
+
+        fake_user = MagicMock()
+        fake_user.user.id = "u1"
+        mock_auth_sb.return_value.auth.get_user.return_value = fake_user
+
+        sessions_data = [
+            {
+                "id": "sess-1",
+                "transcript": [{"role": "interviewer", "content": "What is REST?"}],
+                "feedback": {"summary": "Strong answers."},
+                "created_at": "2026-08-01T00:00:00Z",
+            }
+        ]
+        mock_sb.return_value.table.return_value = make_chainable_table(sessions_data)
+
+        client = app_module.app.test_client()
+        r = client.get("/api/interview/sessions", headers={"Authorization": "Bearer faketoken"})
+        assert r.status_code == 200, r.get_json()
+        assert len(r.get_json()) == 1
+        assert r.get_json()[0]["id"] == "sess-1"
+
+    print("test_interview_sessions_list PASSED")
+
+
+def test_matching_stopword_filtering():
+    import app as app_module
+
+    with patch("routes.matching.get_supabase") as mock_sb, \
+         patch("services.auth.get_supabase") as mock_auth_sb:
+
+        fake_user = MagicMock()
+        fake_user.user.id = "u1"
+        mock_auth_sb.return_value.auth.get_user.return_value = fake_user
+
+        mock_sb.return_value.table.return_value = make_chainable_table([{"id": "jd-1"}])
+
+        client = app_module.app.test_client()
+        raw_jd = (
+            "We are a fast-paced company looking for an experienced candidate with strong "
+            "skills and responsibilities. Required: Python, Docker, Kubernetes."
+        )
+        r = client.post(
+            "/api/jd/submit",
+            json={"raw_text": raw_jd},
+            headers={"Authorization": "Bearer faketoken"},
+        )
+        assert r.status_code == 201, r.get_json()
+
+        # Verify parsed_requirements from the mock insert call
+        insert_args = mock_sb.return_value.table.return_value.insert.call_args[0][0]
+        parsed = insert_args["parsed_requirements"]
+        assert "python" in parsed
+        assert "docker" in parsed
+        assert "kubernetes" in parsed
+        # Check boilerplate words are stripped
+        assert "company" not in parsed
+        assert "candidate" not in parsed
+        assert "responsibilities" not in parsed
+        assert "skills" not in parsed
+
+    print("test_matching_stopword_filtering PASSED")
+
+
 if __name__ == "__main__":
     test_applications_crud()
     test_missing_auth_header_rejected()
     test_applications_work_without_groq_key()
     test_skill_gaps_aggregates_and_ranks_missing_keywords()
     test_interview_503_when_groq_key_missing()
+    test_application_extended_fields()
+    test_interview_sessions_list()
+    test_matching_stopword_filtering()
     print("ALL TESTS PASSED")

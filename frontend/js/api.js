@@ -92,10 +92,14 @@ export function runMatch(resumeId, jdId) {
 
 // ── Interview ──
 
-export function startInterview(jdId = null) {
+export function listInterviewSessions() {
+  return apiFetch('/interview/sessions');
+}
+
+export function startInterview(jdId = null, customTopic = null) {
   return apiFetch('/interview/start', {
     method: 'POST',
-    body: JSON.stringify({ jd_id: jdId }),
+    body: JSON.stringify({ jd_id: jdId, custom_topic: customTopic }),
   });
 }
 
@@ -111,4 +115,10 @@ export function getInterviewFeedback(sessionId) {
     method: 'POST',
     body: JSON.stringify({ session_id: sessionId }),
   });
+}
+
+// ── Skill Gaps ──
+
+export function getSkillGaps() {
+  return apiFetch('/skill-gaps');
 }

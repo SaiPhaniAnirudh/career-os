@@ -21,12 +21,30 @@ _FEEDBACK_SYSTEM_PROMPT = (
 )
 
 
+@interview_bp.get("/sessions")
+@require_auth
+def list_interview_sessions():
+    """Returns the user's past interview sessions and feedback."""
+    user_id = g.user_id
+    sb = get_supabase()
+    res = (
+        sb.table("interview_sessions")
+        .select("id, jd_id, transcript, feedback, created_at")
+        .eq("user_id", user_id)
+        .order("created_at", desc=True)
+        .limit(15)
+        .execute()
+    )
+    return jsonify(res.data)
+
+
 @interview_bp.post("/start")
 @require_auth
 def start_interview():
     user_id = g.user_id
     body = request.get_json(silent=True) or {}
     jd_id = body.get("jd_id")
+    custom_topic = (body.get("custom_topic") or "").strip()
 
     jd_text = None
     if jd_id:
@@ -42,11 +60,13 @@ def start_interview():
             raise ApiError("Job description not found.", status_code=404)
         jd_text = jd_res.data[0]["raw_text"]
 
-    prompt = (
-        f"Job description:\n{jd_text}\n\nAsk the first interview question."
-        if jd_text
-        else "Ask the first general software-engineering interview question."
-    )
+    if jd_text:
+        prompt = f"Job description:\n{jd_text}\n\nAsk the first interview question tailored to this role."
+    elif custom_topic:
+        prompt = f"Target role / focus topic: {custom_topic}\n\nAsk the first technical interview question tailored to this role and topic."
+    else:
+        prompt = "Ask the first general software-engineering interview question."
+
     first_question = llm_client.generate(prompt, system=_INTERVIEWER_SYSTEM_PROMPT)
 
     transcript = [{"role": "interviewer", "content": first_question}]

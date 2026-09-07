@@ -86,6 +86,13 @@ function renderBoard(container, apps) {
         <div class="glass-card kanban-card slide-up" draggable="true" data-id="${app.id}">
           <div class="kanban-card-company">${escapeHtml(app.company)}</div>
           <div class="kanban-card-role">${escapeHtml(app.role)}</div>
+          ${(app.location || app.salary || app.url) ? `
+            <div style="display:flex;gap:var(--space-2);flex-wrap:wrap;margin:var(--space-2) 0">
+              ${app.location ? `<span style="font-size:11px;background:rgba(255,255,255,0.05);padding:1px 6px;border-radius:var(--radius-sm);color:var(--text-secondary)">📍 ${escapeHtml(app.location)}</span>` : ''}
+              ${app.salary ? `<span style="font-size:11px;background:rgba(52,211,153,0.1);padding:1px 6px;border-radius:var(--radius-sm);color:var(--success)">💰 ${escapeHtml(app.salary)}</span>` : ''}
+              ${app.url ? `<a href="${escapeAttr(app.url)}" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:var(--accent-solid);text-decoration:none" onclick="event.stopPropagation()">🔗 Posting</a>` : ''}
+            </div>
+          ` : ''}
           <div class="kanban-card-meta">
             <span>${date}</span>
             <div class="kanban-card-actions">
@@ -178,6 +185,20 @@ function showAddModal(container, apps) {
         <label for="app-role">Role *</label>
         <input class="input" id="app-role" placeholder="Software Engineer, Data Analyst..." required>
       </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3)">
+        <div class="input-group">
+          <label for="app-location">Location</label>
+          <input class="input" id="app-location" placeholder="Remote, NYC, London...">
+        </div>
+        <div class="input-group">
+          <label for="app-salary">Salary / Comp</label>
+          <input class="input" id="app-salary" placeholder="$130k - $160k, £80k...">
+        </div>
+      </div>
+      <div class="input-group">
+        <label for="app-url">Job URL</label>
+        <input type="url" class="input" id="app-url" placeholder="https://careers.company.com/job/123">
+      </div>
       <div class="input-group">
         <label for="app-stage">Stage</label>
         <select class="input" id="app-stage">
@@ -206,6 +227,9 @@ function showAddModal(container, apps) {
         const newApp = await createApplication({
           company,
           role,
+          location: document.querySelector('#app-location').value.trim() || null,
+          salary: document.querySelector('#app-salary').value.trim() || null,
+          url: document.querySelector('#app-url').value.trim() || null,
           stage: document.querySelector('#app-stage').value,
           deadline: document.querySelector('#app-deadline').value || null,
           notes: document.querySelector('#app-notes').value.trim() || null,
@@ -233,6 +257,20 @@ function showEditModal(container, apps, app) {
         <label for="edit-role">Role</label>
         <input class="input" id="edit-role" value="${escapeAttr(app.role)}">
       </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3)">
+        <div class="input-group">
+          <label for="edit-location">Location</label>
+          <input class="input" id="edit-location" value="${escapeAttr(app.location || '')}" placeholder="Remote, NYC...">
+        </div>
+        <div class="input-group">
+          <label for="edit-salary">Salary / Comp</label>
+          <input class="input" id="edit-salary" value="${escapeAttr(app.salary || '')}" placeholder="$140k...">
+        </div>
+      </div>
+      <div class="input-group">
+        <label for="edit-url">Job URL</label>
+        <input type="url" class="input" id="edit-url" value="${escapeAttr(app.url || '')}" placeholder="https://...">
+      </div>
       <div class="input-group">
         <label for="edit-stage">Stage</label>
         <select class="input" id="edit-stage">
@@ -254,6 +292,9 @@ function showEditModal(container, apps, app) {
         const updates = {
           company: document.querySelector('#edit-company').value.trim(),
           role: document.querySelector('#edit-role').value.trim(),
+          location: document.querySelector('#edit-location').value.trim() || null,
+          salary: document.querySelector('#edit-salary').value.trim() || null,
+          url: document.querySelector('#edit-url').value.trim() || null,
           stage: document.querySelector('#edit-stage').value,
           deadline: document.querySelector('#edit-deadline').value || null,
           notes: document.querySelector('#edit-notes').value.trim() || null,

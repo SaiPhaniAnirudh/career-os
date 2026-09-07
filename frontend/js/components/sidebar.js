@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { path: '/dashboard',    icon: '📊', label: 'Dashboard' },
   { path: '/applications', icon: '📋', label: 'Applications' },
   { path: '/matcher',      icon: '🎯', label: 'Matcher' },
+  { path: '/skill-gaps',   icon: '📈', label: 'Skill Gaps' },
   { path: '/interview',    icon: '🎤', label: 'Interview' },
 ];
 

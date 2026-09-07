@@ -132,14 +132,19 @@ export function renderLogin(container) {
       if (isSignUp) {
         errorEl.style.display = 'none';
         // Show success message for email confirmation
-        container.querySelector('.login-form').innerHTML = `
+        const formEl = container.querySelector('.login-form');
+        formEl.innerHTML = `
           <div class="empty-state" style="padding:var(--space-6)">
             <div class="empty-state-icon">📧</div>
             <h3>Check your email</h3>
             <p>We sent a confirmation link to <strong>${email}</strong>. Click it to activate your account, then sign in.</p>
-            <button class="btn btn-secondary" onclick="location.hash='/login'">Back to Sign In</button>
+            <button class="btn btn-secondary" id="back-to-signin-btn">Back to Sign In</button>
           </div>
         `;
+        formEl.querySelector('#back-to-signin-btn')?.addEventListener('click', () => {
+          isSignUp = false;
+          render();
+        });
       } else {
         navigate('/dashboard');
       }

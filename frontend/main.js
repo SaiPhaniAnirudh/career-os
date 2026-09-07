@@ -12,6 +12,7 @@ import { renderLogin } from './js/pages/login.js';
 import { renderDashboard } from './js/pages/dashboard.js';
 import { renderApplications } from './js/pages/applications.js';
 import { renderMatcher } from './js/pages/matcher.js';
+import { renderSkillGaps } from './js/pages/skill_gaps.js';
 import { renderInterview } from './js/pages/interview.js';
 
 // ── Auth-aware route guards ──
@@ -62,6 +63,13 @@ route('/matcher', (container) => {
   showAppShell();
   renderSidebar();
   renderMatcher(container);
+});
+
+route('/skill-gaps', async (container) => {
+  if (!store.get('user')) { navigate('/login'); return; }
+  showAppShell();
+  renderSidebar();
+  await renderSkillGaps(container);
 });
 
 route('/interview', (container) => {
