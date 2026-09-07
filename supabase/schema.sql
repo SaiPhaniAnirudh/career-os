@@ -180,3 +180,69 @@ create policy "Users can update their own applications"
 create policy "Users can delete their own applications"
     on public.applications for delete
     using (auth.uid() = user_id);
+
+-- ------------------------------------------------------------------------------
+-- 6. Peer Profiles (Phase 4 Peer Matchmaking)
+-- ------------------------------------------------------------------------------
+create table if not exists public.peer_profiles (
+    id uuid primary key default gen_random_uuid(),
+    user_id uuid references auth.users(id) on delete cascade not null unique,
+    target_role text not null,
+    target_company text default '',
+    skills text[] default '{}'::text[] not null,
+    experience_level text default 'Mid-Level',
+    availability text default 'Flexible',
+    bio text default '',
+    contact_email text,
+    created_at timestamptz default timezone('utc'::text, now()) not null
+);
+
+create index if not exists idx_peer_profiles_user_id on public.peer_profiles(user_id);
+
+alter table public.peer_profiles enable row level security;
+
+create policy "Authenticated users can view peer profiles"
+    on public.peer_profiles for select
+    using (auth.uid() is not null);
+
+create policy "Users can insert their own peer profile"
+    on public.peer_profiles for insert
+    with check (auth.uid() = user_id);
+
+create policy "Users can update their own peer profile"
+    on public.peer_profiles for update
+    using (auth.uid() = user_id);
+
+create policy "Users can delete their own peer profile"
+    on public.peer_profiles for delete
+    using (auth.uid() = user_id);
+
+-- ------------------------------------------------------------------------------
+-- 7. Peer Connection Requests
+-- ------------------------------------------------------------------------------
+create table if not exists public.peer_requests (
+    id uuid primary key default gen_random_uuid(),
+    sender_id uuid references auth.users(id) on delete cascade not null,
+    receiver_id uuid references auth.users(id) on delete cascade not null,
+    status text not null check (status in ('pending', 'accepted', 'declined')) default 'pending',
+    message text default '',
+    created_at timestamptz default timezone('utc'::text, now()) not null
+);
+
+create index if not exists idx_peer_requests_sender on public.peer_requests(sender_id);
+create index if not exists idx_peer_requests_receiver on public.peer_requests(receiver_id);
+
+alter table public.peer_requests enable row level security;
+
+create policy "Users can view requests they sent or received"
+    on public.peer_requests for select
+    using (auth.uid() = sender_id or auth.uid() = receiver_id);
+
+create policy "Users can insert connection requests"
+    on public.peer_requests for insert
+    with check (auth.uid() = sender_id);
+
+create policy "Receivers can update request status"
+    on public.peer_requests for update
+    using (auth.uid() = receiver_id or auth.uid() = sender_id);
+

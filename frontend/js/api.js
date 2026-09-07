@@ -122,3 +122,39 @@ export function getInterviewFeedback(sessionId) {
 export function getSkillGaps() {
   return apiFetch('/skill-gaps');
 }
+
+// ── Peers (Phase 4 Matchmaking) ──
+
+export function getMyPeerProfile() {
+  return apiFetch('/peers/me');
+}
+
+export function savePeerProfile(profileData) {
+  return apiFetch('/peers/profile', {
+    method: 'POST',
+    body: JSON.stringify(profileData),
+  });
+}
+
+export function listPeers() {
+  return apiFetch('/peers');
+}
+
+export function sendPeerRequest(receiverId, message) {
+  return apiFetch('/peers/connect', {
+    method: 'POST',
+    body: JSON.stringify({ receiver_id: receiverId, message }),
+  });
+}
+
+export function listPeerRequests() {
+  return apiFetch('/peers/requests');
+}
+
+export function respondPeerRequest(requestId, status) {
+  return apiFetch(`/peers/requests/${requestId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+}
+

@@ -21,6 +21,7 @@ def make_chainable_table(return_data):
     m.update.return_value = m
     m.delete.return_value = m
     m.eq.return_value = m
+    m.neq.return_value = m
     m.order.return_value = m
     m.limit.return_value = m
     m.execute.return_value = _fake_execute_result(return_data)
@@ -286,6 +287,70 @@ def test_matching_stopword_filtering():
     print("test_matching_stopword_filtering PASSED")
 
 
+def test_peer_profile_and_discovery():
+    import app as app_module
+
+    with patch("routes.peers.get_supabase") as mock_sb, \
+         patch("services.auth.get_supabase") as mock_auth_sb:
+
+        fake_user = MagicMock()
+        fake_user.user.id = "u1"
+        mock_auth_sb.return_value.auth.get_user.return_value = fake_user
+
+        client = app_module.app.test_client()
+        headers = {"Authorization": "Bearer faketoken"}
+
+        # 1. Profile save
+        profile_row = {
+            "user_id": "u1",
+            "target_role": "Backend Engineer",
+            "target_company": "Google",
+            "skills": ["python", "docker"],
+            "experience_level": "Mid-Level",
+            "availability": "Weekends",
+            "bio": "Prepping for system design",
+            "contact_email": "u1@test.com",
+        }
+        mock_sb.return_value.table.return_value = make_chainable_table([])
+        # First save (insert)
+        r = client.post(
+            "/api/peers/profile",
+            json=profile_row,
+            headers=headers,
+        )
+        assert r.status_code == 200, r.get_json()
+
+        # 2. Peer discovery
+        peer_candidate = {
+            "user_id": "u2",
+            "target_role": "Backend Software Engineer",
+            "target_company": "Google",
+            "skills": ["python", "kubernetes"],
+            "experience_level": "Senior",
+            "availability": "Evenings",
+            "bio": "Looking for mock interview buddy",
+            "contact_email": "u2@test.com",
+        }
+        mock_sb.return_value.table.return_value = make_chainable_table([peer_candidate])
+        r = client.get("/api/peers", headers=headers)
+        assert r.status_code == 200, r.get_json()
+        peers = r.get_json()
+        assert len(peers) == 1
+        assert peers[0]["match_score"] > 40.0
+
+        # 3. Connection request
+        req_row = {"id": "req-1", "sender_id": "u1", "receiver_id": "u2", "status": "pending"}
+        mock_sb.return_value.table.return_value = make_chainable_table([])
+        r = client.post(
+            "/api/peers/connect",
+            json={"receiver_id": "u2", "message": "Hey, want to practice mocks?"},
+            headers=headers,
+        )
+        assert r.status_code == 201, r.get_json()
+
+    print("test_peer_profile_and_discovery PASSED")
+
+
 if __name__ == "__main__":
     test_applications_crud()
     test_missing_auth_header_rejected()
@@ -295,4 +360,5 @@ if __name__ == "__main__":
     test_application_extended_fields()
     test_interview_sessions_list()
     test_matching_stopword_filtering()
+    test_peer_profile_and_discovery()
     print("ALL TESTS PASSED")

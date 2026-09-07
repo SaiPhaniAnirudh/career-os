@@ -14,6 +14,7 @@ import { renderApplications } from './js/pages/applications.js';
 import { renderMatcher } from './js/pages/matcher.js';
 import { renderSkillGaps } from './js/pages/skill_gaps.js';
 import { renderInterview } from './js/pages/interview.js';
+import { renderPeers } from './js/pages/peers.js';
 
 // ── Auth-aware route guards ──
 const PUBLIC_ROUTES = new Set(['/login']);
@@ -77,6 +78,13 @@ route('/interview', (container) => {
   showAppShell();
   renderSidebar();
   renderInterview(container);
+});
+
+route('/peers', async (container) => {
+  if (!store.get('user')) { navigate('/login'); return; }
+  showAppShell();
+  renderSidebar();
+  await renderPeers(container);
 });
 
 // ── Initialize ──

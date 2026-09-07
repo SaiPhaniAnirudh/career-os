@@ -32,6 +32,17 @@ export async function signIn(email, password) {
   return { user: data?.user, error };
 }
 
+/** Sign in with an OAuth provider (e.g. 'google', 'github'). */
+export async function signInWithOAuth(provider) {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider,
+    options: {
+      redirectTo: window.location.origin,
+    },
+  });
+  return { data, error };
+}
+
 /** Sign out the current session. */
 export async function signOut() {
   await supabase.auth.signOut();

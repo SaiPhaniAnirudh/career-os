@@ -9,6 +9,7 @@ from routes.applications import applications_bp
 from routes.matching import matching_bp
 from routes.interview import interview_bp
 from routes.skill_gaps import skill_gaps_bp
+from routes.peers import peers_bp
 
 
 def create_app():
@@ -30,6 +31,7 @@ def create_app():
     app.register_blueprint(matching_bp)
     app.register_blueprint(interview_bp)
     app.register_blueprint(skill_gaps_bp)
+    app.register_blueprint(peers_bp)
 
     @app.get("/api/health")
     def health():
