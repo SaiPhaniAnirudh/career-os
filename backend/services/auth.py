@@ -23,10 +23,10 @@ def require_auth(view_func):
         try:
             user_res = sb.auth.get_user(token)
         except Exception as exc:
-            raise ApiError("Invalid or expired session.", status_code=401) from exc
+            raise ApiError(f"Session verification failed: {exc}", status_code=401) from exc
 
         if not user_res or not user_res.user:
-            raise ApiError("Invalid or expired session.", status_code=401)
+            raise ApiError("No active user found for this session token.", status_code=401)
 
         g.user_id = user_res.user.id
         g.user_token = token

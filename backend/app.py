@@ -47,6 +47,7 @@ def create_app():
 
         return jsonify({
             "status": "ok",
+            "version": "v2-deployed",
             "render": "awake",
             "supabase": db_status,
             "timestamp": datetime.now(timezone.utc).isoformat(),

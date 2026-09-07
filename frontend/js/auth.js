@@ -8,24 +8,10 @@ const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-/** Get the current session's access token for API calls. Automatically refreshes if expired. */
+/** Get the current session's access token for API calls. */
 export async function getToken() {
-  let { data } = await supabase.auth.getSession();
-  let session = data?.session;
-
-  // If token is missing or expired / expiring in next 60s, refresh it
-  const isExpired = session?.expires_at ? (session.expires_at * 1000 <= Date.now() + 60000) : false;
-  if (!session || isExpired) {
-    try {
-      const refreshed = await supabase.auth.refreshSession();
-      if (refreshed?.data?.session) {
-        session = refreshed.data.session;
-      }
-    } catch {
-      // Refresh failed
-    }
-  }
-  return session?.access_token ?? null;
+  const { data } = await supabase.auth.getSession();
+  return data?.session?.access_token ?? null;
 }
 
 /** Get the current user object, or null. */

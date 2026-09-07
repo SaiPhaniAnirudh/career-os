@@ -46,11 +46,6 @@ async function apiFetch(path, options = {}) {
   }
 
   if (!res.ok) {
-    if (res.status === 401) {
-      await supabase.auth.signOut().catch(() => {});
-      setTimeout(() => navigate('/login'), 1500);
-      throw new Error('Your session expired. Please sign in again.');
-    }
     throw new Error(data.error || `Request failed (${res.status})`);
   }
 
