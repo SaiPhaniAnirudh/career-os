@@ -13,7 +13,7 @@ const API_BASE = `${import.meta.env.VITE_API_BASE || 'http://localhost:5000'}/ap
 async function apiFetch(path, options = {}) {
   const token = await getToken();
   if (!token) {
-    throw new Error('Not authenticated');
+    throw new Error('Please sign in to continue.');
   }
 
   const headers = {
@@ -30,6 +30,9 @@ async function apiFetch(path, options = {}) {
   const data = await res.json();
 
   if (!res.ok) {
+    if (res.status === 401) {
+      throw new Error('Session expired or email unverified. Please Sign Out and sign in with Google or verified credentials.');
+    }
     throw new Error(data.error || `Request failed (${res.status})`);
   }
 
