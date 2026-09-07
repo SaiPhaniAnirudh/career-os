@@ -1,11 +1,14 @@
+import json
 import re
-
+import requests
+from bs4 import BeautifulSoup
 from flask import Blueprint, request, jsonify, g
 from pypdf import PdfReader
 
 from services.supabase_client import get_supabase
 from services.errors import ApiError
 from services.auth import require_auth
+from services.llm_client import generate
 
 matching_bp = Blueprint("matching", __name__, url_prefix="/api")
 
@@ -167,3 +170,193 @@ def run_match():
         .execute()
     )
     return jsonify(match_res.data[0]), 201
+
+
+@matching_bp.post("/jd/scrape")
+@require_auth
+def scrape_jd():
+    user_id = g.user_id
+    body = request.get_json(silent=True) or {}
+    url = (body.get("url") or "").strip()
+
+    if not url:
+        raise ApiError("'url' is required.")
+    if not (url.startswith("http://") or url.startswith("https://")):
+        raise ApiError("URL must begin with http:// or https://")
+
+    try:
+        resp = requests.get(
+            url,
+            headers={
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/120.0.0.0 Safari/537.36"
+                ),
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.5",
+            },
+            timeout=12,
+        )
+        resp.raise_for_status()
+    except requests.RequestException as exc:
+        raise ApiError(f"Could not load job URL: {str(exc)}", status_code=400)
+
+    soup = BeautifulSoup(resp.text, "html.parser")
+
+    # Remove non-content tags
+    for el in soup(["script", "style", "noscript", "nav", "header", "footer", "svg"]):
+        el.decompose()
+
+    page_title = soup.title.string.strip() if soup.title and soup.title.string else ""
+
+    # Look for common job container selectors or fallback to main/body
+    candidates = soup.find_all(
+        lambda tag: tag.name in ["article", "main", "div", "section"]
+        and any(
+            kw in " ".join(tag.get("class", [])).lower()
+            or kw in (tag.get("id") or "").lower()
+            for kw in ["job", "description", "posting", "details", "content", "role"]
+        )
+    )
+
+    if candidates:
+        best_candidate = max(candidates, key=lambda c: len(c.get_text()))
+        raw_text = best_candidate.get_text(separator="\n", strip=True)
+    else:
+        body_el = soup.find("body") or soup
+        raw_text = body_el.get_text(separator="\n", strip=True)
+
+    raw_text = re.sub(r"\n{3,}", "\n\n", raw_text).strip()
+
+    if len(raw_text) < 40:
+        raise ApiError("Unable to extract sufficient job description text from this URL. Please paste the job description directly.")
+
+    parsed_requirements = sorted(_tokenize(raw_text))
+
+    sb = get_supabase()
+    res = (
+        sb.table("job_descriptions")
+        .insert(
+            {
+                "user_id": user_id,
+                "raw_text": raw_text,
+                "parsed_requirements": parsed_requirements,
+            }
+        )
+        .execute()
+    )
+    result = dict(res.data[0])
+    result["title"] = page_title
+    result["source_url"] = url
+    return jsonify(result), 201
+
+
+@matching_bp.post("/resume/optimize")
+@require_auth
+def optimize_bullets():
+    user_id = g.user_id
+    body = request.get_json(silent=True) or {}
+
+    resume_id = body.get("resume_id")
+    jd_id = body.get("jd_id")
+    bullet_text = (body.get("bullet_text") or "").strip()
+    missing_keywords = body.get("missing_keywords") or []
+
+    sb = get_supabase()
+    raw_resume_text = ""
+
+    if resume_id:
+        resume_res = (
+            sb.table("resumes").select("*").eq("id", resume_id).eq("user_id", user_id).execute()
+        )
+        if resume_res.data:
+            raw_resume_text = resume_res.data[0].get("raw_text") or ""
+
+    if jd_id and not missing_keywords:
+        jd_res = (
+            sb.table("job_descriptions").select("*").eq("id", jd_id).eq("user_id", user_id).execute()
+        )
+        if jd_res.data:
+            jd_skills = set(jd_res.data[0].get("parsed_requirements") or [])
+            resume_skills = set(_tokenize(raw_resume_text)) if raw_resume_text else set()
+            missing_keywords = sorted(jd_skills - resume_skills)[:10]
+
+    # Extract target bullets
+    bullets_to_optimize = []
+    if bullet_text:
+        lines = [line.strip().lstrip("•-*0123456789. ") for line in bullet_text.split("\n") if len(line.strip()) > 15]
+        bullets_to_optimize = lines[:8] if lines else [bullet_text]
+    elif raw_resume_text:
+        candidates = []
+        for line in raw_resume_text.split("\n"):
+            clean_l = line.strip()
+            if any(clean_l.startswith(prefix) for prefix in ["•", "-", "*", "–"]) or (len(clean_l) > 30 and re.match(r"^[A-Z][a-z]+ed\b", clean_l)):
+                stripped = clean_l.lstrip("•-*–0123456789. ").strip()
+                if len(stripped) > 25:
+                    candidates.append(stripped)
+        bullets_to_optimize = candidates[:6] if candidates else [raw_resume_text[:200]]
+
+    if not bullets_to_optimize:
+        raise ApiError("No resume text or bullets found to optimize.")
+
+    kw_clause = ", ".join(missing_keywords[:8]) if missing_keywords else "Modern industry best practices and technical rigor"
+
+    system_prompt = (
+        "You are an expert executive resume writer and career coach specializing in the Google XYZ "
+        "formula ('Accomplished [X] as measured by [Y], by doing [Z]') and the STAR framework "
+        "(Situation, Task, Action, Result). Your objective is to transform weak or passive resume "
+        "bullets into high-impact, quantifiable, action-oriented accomplishments incorporating target keywords."
+    )
+
+    user_prompt = f"""Target Missing Keywords / Skills to naturally integrate where relevant:
+{kw_clause}
+
+Original Resume Bullet Points to optimize:
+{chr(10).join(f"- {b}" for b in bullets_to_optimize)}
+
+Instructions:
+1. For each original bullet, rewrite it into an optimized bullet following Google XYZ ("Accomplished [X] as measured by [Y], by doing [Z]") or STAR framework.
+2. Ensure each optimized bullet begins with a strong active verb and includes a realistic metric suggestion (e.g. percentages, latency reduction, cost savings, user scale).
+3. Weave in target missing keywords if contextually appropriate.
+4. Output ONLY a valid JSON array of objects with the exact schema:
+[
+  {{
+    "original": "original bullet point",
+    "optimized": "optimized bullet point",
+    "framework": "Google XYZ",
+    "metric_suggestion": "+35% performance improvement",
+    "keywords_added": ["skill1", "skill2"],
+    "explanation": "concise explanation of why this rewrite stands out"
+  }}
+]
+Do not wrap in markdown or add conversational intro/outro text. Return only valid JSON."""
+
+    response_text = generate(user_prompt, system=system_prompt)
+
+    cleaned_json = response_text.strip()
+    if cleaned_json.startswith("```"):
+        cleaned_json = re.sub(r"^```(?:json)?\s*", "", cleaned_json)
+        cleaned_json = re.sub(r"\s*```$", "", cleaned_json)
+
+    try:
+        optimizations = json.loads(cleaned_json)
+        if not isinstance(optimizations, list):
+            optimizations = [optimizations]
+    except Exception:
+        optimizations = []
+        for bullet in bullets_to_optimize:
+            optimizations.append({
+                "original": bullet,
+                "optimized": f"Spearheaded key initiatives utilizing {missing_keywords[0] if missing_keywords else 'technical best practices'}, optimizing workflow velocity by 30% through targeted execution.",
+                "framework": "Google XYZ",
+                "metric_suggestion": "+30% velocity increase",
+                "keywords_added": missing_keywords[:2] if missing_keywords else ["execution"],
+                "explanation": "Applied Google XYZ framework with quantified impact and target keywords.",
+            })
+
+    return jsonify({
+        "optimizations": optimizations,
+        "keywords_targeted": missing_keywords[:8],
+    }), 200
+

@@ -1,4 +1,4 @@
-// ─── Career OS: Interview Page (Chat UI) ───
+// ─── Career OS: Interview Page (Chat UI with Voice) ───
 import { startInterview, respondInterview, getInterviewFeedback, listInterviewSessions } from '../api.js';
 import { showToast } from '../components/toast.js';
 import { showModal } from '../components/modal.js';
@@ -7,15 +7,21 @@ export function renderInterview(container) {
   let sessionId = null;
   let transcript = [];
   let isLoading = false;
+  let isSpeechEnabled = true;
+  let isListening = false;
+  let recognition = null;
 
   container.innerHTML = `
     <div class="interview-container">
       <div class="interview-header">
         <div>
           <h1>Mock Interview</h1>
-          <p style="color:var(--text-secondary)">Practice technical interviews with real-time AI feedback</p>
+          <p style="color:var(--text-secondary)">Practice technical interviews with real-time AI voice & feedback</p>
         </div>
-        <div style="display:flex;gap:var(--space-3);flex-wrap:wrap">
+        <div style="display:flex;gap:var(--space-3);flex-wrap:wrap;align-items:center">
+          <button class="btn btn-ghost" id="speech-toggle-btn" title="Toggle AI voice reading questions aloud">
+            🔊 AI Voice: On
+          </button>
           <button class="btn btn-ghost" id="history-btn">
             📜 Past Sessions
           </button>
@@ -32,7 +38,7 @@ export function renderInterview(container) {
         <div class="empty-state">
           <div class="empty-state-icon">🎤</div>
           <h3>Ready to practice?</h3>
-          <p>Start a mock interview session tailored to your target role or focus topic. The AI interviewer asks questions, evaluates your answers, and delivers structured feedback.</p>
+          <p>Start a mock interview session tailored to your target role or focus topic. The AI interviewer asks questions out loud, evaluates your answers, and delivers structured feedback.</p>
           <div style="margin-top:var(--space-4);display:flex;gap:var(--space-3);justify-content:center">
             <button class="btn btn-primary" id="start-empty-btn">🎤 Choose Topic & Start</button>
           </div>
@@ -41,7 +47,10 @@ export function renderInterview(container) {
 
       <div class="interview-input-area" id="interview-input-area" style="display:none">
         <textarea class="input" id="interview-answer" rows="1"
-          placeholder="Type your answer... (Press Enter to send, Shift+Enter for newline)" style="resize:none;min-height:44px"></textarea>
+          placeholder="Type or speak your answer... (Press Enter to send, Shift+Enter for newline)" style="resize:none;min-height:44px"></textarea>
+        <button class="btn btn-secondary" id="mic-btn" type="button" title="Speak your answer (Speech-to-Text)" style="padding:0 var(--space-4);min-width:48px;display:flex;align-items:center;justify-content:center">
+          🎙️
+        </button>
         <button class="btn btn-primary" id="send-btn" disabled>
           Send
         </button>
@@ -59,6 +68,113 @@ export function renderInterview(container) {
   const startEmptyBtn = container.querySelector('#start-empty-btn');
   const feedbackBtn = container.querySelector('#feedback-btn');
   const historyBtn = container.querySelector('#history-btn');
+  const speechToggleBtn = container.querySelector('#speech-toggle-btn');
+  const micBtn = container.querySelector('#mic-btn');
+
+  // Speech Toggle
+  speechToggleBtn?.addEventListener('click', () => {
+    isSpeechEnabled = !isSpeechEnabled;
+    speechToggleBtn.textContent = isSpeechEnabled ? '🔊 AI Voice: On' : '🔇 AI Voice: Off';
+    if (!isSpeechEnabled && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+  });
+
+  // Speech Recognition (Microphone STT)
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (SpeechRec) {
+    recognition = new SpeechRec();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onresult = (event) => {
+      let finalTranscript = '';
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        }
+      }
+      if (finalTranscript) {
+        answerInput.value = (answerInput.value + ' ' + finalTranscript).trim();
+        answerInput.style.height = Math.min(answerInput.scrollHeight, 150) + 'px';
+        sendBtn.disabled = !answerInput.value.trim();
+      }
+    };
+
+    recognition.onerror = (event) => {
+      console.warn('Speech recognition error:', event.error);
+      if (event.error === 'not-allowed') {
+        showToast('Microphone access denied. Please grant permission in browser.', 'warning');
+      }
+      stopListening();
+    };
+
+    recognition.onend = () => {
+      if (isListening) {
+        stopListening();
+      }
+    };
+
+    micBtn?.addEventListener('click', () => {
+      if (isListening) {
+        stopListening();
+      } else {
+        startListening();
+      }
+    });
+  } else {
+    if (micBtn) {
+      micBtn.title = 'Speech recognition not supported in this browser';
+      micBtn.style.opacity = '0.5';
+      micBtn.addEventListener('click', () => {
+        showToast('Speech recognition is not supported in this browser. Please use Chrome or Edge.', 'info');
+      });
+    }
+  }
+
+  function startListening() {
+    try {
+      recognition.start();
+      isListening = true;
+      if (micBtn) {
+        micBtn.style.background = 'var(--danger-bg)';
+        micBtn.style.borderColor = 'var(--danger)';
+        micBtn.innerHTML = '<span style="animation:pulse 1s infinite">🔴</span> Listening';
+      }
+      showToast('Listening... speak your answer.', 'info');
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  function stopListening() {
+    try {
+      recognition?.stop();
+    } catch (e) {}
+    isListening = false;
+    if (micBtn) {
+      micBtn.style.background = '';
+      micBtn.style.borderColor = '';
+      micBtn.innerHTML = '🎙️';
+    }
+  }
+
+  function speakQuestion(text) {
+    if (!isSpeechEnabled || !('speechSynthesis' in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
+      const voices = window.speechSynthesis.getVoices();
+      const preferredVoice = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Samantha')));
+      if (preferredVoice) utterance.voice = preferredVoice;
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {
+      console.warn('Speech synthesis error:', e);
+    }
+  }
 
   // Auto-resize textarea
   answerInput.addEventListener('input', () => {
@@ -132,6 +248,8 @@ export function renderInterview(container) {
 
       renderMessages();
       answerInput.focus();
+      const firstQ = transcript.find(t => t.role === 'interviewer');
+      if (firstQ) speakQuestion(firstQ.content);
     } catch (err) {
       showToast(err.message, 'error');
       startBtn.disabled = false;
@@ -143,6 +261,7 @@ export function renderInterview(container) {
   sendBtn.addEventListener('click', handleSend);
 
   async function handleSend() {
+    stopListening();
     const answer = answerInput.value.trim();
     if (!answer || !sessionId || isLoading) return;
 
@@ -164,6 +283,8 @@ export function renderInterview(container) {
       removeTypingIndicator();
       renderMessages();
       answerInput.focus();
+      const lastQ = transcript.filter(t => t.role === 'interviewer').slice(-1)[0];
+      if (lastQ) speakQuestion(lastQ.content);
     } catch (err) {
       removeTypingIndicator();
       showToast(err.message, 'error');

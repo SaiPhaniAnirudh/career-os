@@ -6,8 +6,9 @@ import { store } from '../state.js';
 const NAV_ITEMS = [
   { path: '/dashboard',    icon: '📊', label: 'Dashboard' },
   { path: '/applications', icon: '📋', label: 'Applications' },
+  { path: '/analytics',    icon: '📈', label: 'Analytics' },
   { path: '/matcher',      icon: '🎯', label: 'Matcher' },
-  { path: '/skill-gaps',   icon: '📈', label: 'Skill Gaps' },
+  { path: '/skill-gaps',   icon: '⚡', label: 'Skill Gaps' },
   { path: '/interview',    icon: '🎤', label: 'Interview' },
   { path: '/peers',        icon: '👥', label: 'Peer Match' },
 ];

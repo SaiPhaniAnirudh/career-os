@@ -11,6 +11,7 @@ import { renderSidebar, openMobileSidebar, closeMobileSidebar } from './js/compo
 import { renderLogin } from './js/pages/login.js';
 import { renderDashboard } from './js/pages/dashboard.js';
 import { renderApplications } from './js/pages/applications.js';
+import { renderAnalytics } from './js/pages/analytics.js';
 import { renderMatcher } from './js/pages/matcher.js';
 import { renderSkillGaps } from './js/pages/skill_gaps.js';
 import { renderInterview } from './js/pages/interview.js';
@@ -57,6 +58,13 @@ route('/applications', async (container) => {
   showAppShell();
   renderSidebar();
   await renderApplications(container);
+});
+
+route('/analytics', async (container) => {
+  if (!store.get('user')) { navigate('/login'); return; }
+  showAppShell();
+  renderSidebar();
+  await renderAnalytics(container);
 });
 
 route('/matcher', (container) => {

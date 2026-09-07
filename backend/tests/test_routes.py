@@ -351,6 +351,180 @@ def test_peer_profile_and_discovery():
     print("test_peer_profile_and_discovery PASSED")
 
 
+def test_jd_scrape():
+    import app as app_module
+
+    with patch("routes.matching.get_supabase") as mock_sb, \
+         patch("services.auth.get_supabase") as mock_auth_sb, \
+         patch("routes.matching.requests.get") as mock_http_get:
+
+        fake_user = MagicMock()
+        fake_user.user.id = "u1"
+        mock_auth_sb.return_value.auth.get_user.return_value = fake_user
+
+        # 1. Test invalid URL format
+        client = app_module.app.test_client()
+        headers = {"Authorization": "Bearer faketoken"}
+        r = client.post("/api/jd/scrape", json={"url": "ftp://bad-url"}, headers=headers)
+        assert r.status_code == 400, r.get_json()
+
+        # 2. Test valid HTML scraping
+        html_content = """
+        <!DOCTYPE html>
+        <html>
+        <head><title>Staff Backend Engineer at Stripe</title></head>
+        <body>
+            <header><nav>Home Links</nav></header>
+            <main class="job-description-container">
+                <h1>Staff Backend Engineer</h1>
+                <p>We are seeking an engineer skilled in Python, Kubernetes, Redis, and Distributed Systems.</p>
+            </main>
+            <footer>Footer boilerplate</footer>
+        </body>
+        </html>
+        """
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.text = html_content
+        mock_http_get.return_value = mock_resp
+
+        mock_sb.return_value.table.return_value = make_chainable_table([{"id": "jd-scraped-1"}])
+
+        r = client.post(
+            "/api/jd/scrape",
+            json={"url": "https://stripe.com/jobs/staff-backend"},
+            headers=headers,
+        )
+        assert r.status_code == 201, r.get_json()
+        body = r.get_json()
+        assert body["id"] == "jd-scraped-1"
+        assert body["title"] == "Staff Backend Engineer at Stripe"
+        assert body["source_url"] == "https://stripe.com/jobs/staff-backend"
+
+        # Check table insertion contents
+        insert_args = mock_sb.return_value.table.return_value.insert.call_args[0][0]
+        parsed = insert_args["parsed_requirements"]
+        assert "python" in parsed
+        assert "kubernetes" in parsed
+        assert "redis" in parsed
+
+    print("test_jd_scrape PASSED")
+
+
+def test_resume_optimize():
+    import app as app_module
+    from config import Config
+
+    with patch("routes.matching.get_supabase") as mock_sb, \
+         patch("services.auth.get_supabase") as mock_auth_sb, \
+         patch("routes.matching.generate") as mock_generate:
+
+        fake_user = MagicMock()
+        fake_user.user.id = "u1"
+        mock_auth_sb.return_value.auth.get_user.return_value = fake_user
+
+        # Mock LLM return
+        mock_generate.return_value = """[
+            {
+                "original": "Built backend API services for customers",
+                "optimized": "Architected resilient Python/Go microservices utilizing Docker and Kubernetes, reducing p99 API latency by 42% across 2M daily active users.",
+                "framework": "Google XYZ",
+                "metric_suggestion": "42% latency reduction",
+                "keywords_added": ["Docker", "Kubernetes"],
+                "explanation": "Quantified scale and latency impact using Google XYZ format."
+            }
+        ]"""
+
+        client = app_module.app.test_client()
+        headers = {"Authorization": "Bearer faketoken"}
+
+        r = client.post(
+            "/api/resume/optimize",
+            json={
+                "bullet_text": "Built backend API services for customers",
+                "missing_keywords": ["docker", "kubernetes"],
+            },
+            headers=headers,
+        )
+        assert r.status_code == 200, r.get_json()
+        body = r.get_json()
+        assert len(body["optimizations"]) == 1
+        assert body["optimizations"][0]["framework"] == "Google XYZ"
+        assert "42% latency reduction" in body["optimizations"][0]["metric_suggestion"]
+
+    # Test 503 when GROQ key missing
+    with patch("routes.matching.get_supabase") as mock_sb, \
+         patch("services.auth.get_supabase") as mock_auth_sb, \
+         patch.object(Config, "GROQ_API_KEY", ""):
+
+        fake_user = MagicMock()
+        fake_user.user.id = "u1"
+        mock_auth_sb.return_value.auth.get_user.return_value = fake_user
+
+        client = app_module.app.test_client()
+        r = client.post(
+            "/api/resume/optimize",
+            json={"bullet_text": "Simple bullet"},
+            headers={"Authorization": "Bearer faketoken"},
+        )
+        assert r.status_code == 503, r.get_json()
+
+    print("test_resume_optimize PASSED")
+
+
+def test_application_analytics():
+    import app as app_module
+
+    with patch("routes.applications.get_supabase") as mock_sb, \
+         patch("services.auth.get_supabase") as mock_auth_sb:
+
+        fake_user = MagicMock()
+        fake_user.user.id = "u1"
+        mock_auth_sb.return_value.auth.get_user.return_value = fake_user
+
+        sample_apps = [
+            {"id": "a1", "stage": "applied", "location": "Remote", "salary": "$150k", "created_at": "2026-08-01T00:00:00Z"},
+            {"id": "a2", "stage": "screening", "location": "San Francisco", "salary": "$170k", "created_at": "2026-08-05T00:00:00Z"},
+            {"id": "a3", "stage": "interview", "location": "Remote", "salary": "$190k", "created_at": "2026-08-10T00:00:00Z"},
+            {"id": "a4", "stage": "offer", "location": "New York", "salary": "$210k", "created_at": "2026-08-12T00:00:00Z"},
+            {"id": "a5", "stage": "rejected", "location": "Remote", "salary": "$160k", "created_at": "2026-08-02T00:00:00Z"},
+        ]
+        mock_sb.return_value.table.return_value = make_chainable_table(sample_apps)
+
+        client = app_module.app.test_client()
+        r = client.get("/api/applications/analytics", headers={"Authorization": "Bearer faketoken"})
+        assert r.status_code == 200, r.get_json()
+        body = r.get_json()
+
+        assert body["total_applications"] == 5
+        assert body["active_applications"] == 4  # excludes rejected
+        assert body["stage_counts"]["offer"] == 1
+        assert body["stage_counts"]["interview"] == 1
+        assert body["stage_counts"]["screening"] == 1
+        assert body["stage_counts"]["applied"] == 1
+        assert body["stage_counts"]["rejected"] == 1
+
+        # Funnel checks:
+        funnel = body["funnel"]
+        assert len(funnel) == 4
+        assert funnel[0]["stage"] == "Applied"
+        assert funnel[0]["count"] == 5
+        assert funnel[1]["stage"] == "Screening"
+        assert funnel[1]["count"] == 3  # screening + interview + offer
+        assert funnel[2]["stage"] == "Interview"
+        assert funnel[2]["count"] == 2  # interview + offer
+        assert funnel[3]["stage"] == "Offer"
+        assert funnel[3]["count"] == 1  # offer
+
+        metrics = body["metrics"]
+        assert metrics["overall_offer_rate"] == 20.0
+        assert metrics["interview_rate"] == 40.0
+        assert len(metrics["top_locations"]) > 0
+        assert metrics["top_locations"][0]["location"] == "Remote"
+
+    print("test_application_analytics PASSED")
+
+
 if __name__ == "__main__":
     test_applications_crud()
     test_missing_auth_header_rejected()
@@ -361,4 +535,8 @@ if __name__ == "__main__":
     test_interview_sessions_list()
     test_matching_stopword_filtering()
     test_peer_profile_and_discovery()
+    test_jd_scrape()
+    test_resume_optimize()
+    test_application_analytics()
     print("ALL TESTS PASSED")
+

@@ -20,20 +20,20 @@ export async function renderDashboard(container) {
         <div class="quick-action-title">Track Application</div>
         <div class="quick-action-desc">Add a new job application to your board</div>
       </div>
+      <div class="glass-card quick-action" data-action="analytics">
+        <div class="quick-action-icon">📈</div>
+        <div class="quick-action-title">Conversion Funnel</div>
+        <div class="quick-action-desc">Analyze pipeline conversion and stage drop-offs</div>
+      </div>
       <div class="glass-card quick-action" data-action="matcher">
         <div class="quick-action-icon">🎯</div>
-        <div class="quick-action-title">Match Resume</div>
-        <div class="quick-action-desc">Check how your resume matches a job description</div>
-      </div>
-      <div class="glass-card quick-action" data-action="skill-gaps">
-        <div class="quick-action-icon">📈</div>
-        <div class="quick-action-title">Skill Gaps</div>
-        <div class="quick-action-desc">Review high-demand missing skills</div>
+        <div class="quick-action-title">Match & Optimize</div>
+        <div class="quick-action-desc">Match resume and rewrite bullets with AI</div>
       </div>
       <div class="glass-card quick-action" data-action="interview">
         <div class="quick-action-icon">🎤</div>
         <div class="quick-action-title">Mock Interview</div>
-        <div class="quick-action-desc">Practice with an AI interviewer</div>
+        <div class="quick-action-desc">Practice with AI voice and instant feedback</div>
       </div>
     </div>
 

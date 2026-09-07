@@ -60,6 +60,10 @@ export function deleteApplication(id) {
   return apiFetch(`/applications/${id}`, { method: 'DELETE' });
 }
 
+export function getApplicationAnalytics() {
+  return apiFetch('/applications/analytics');
+}
+
 // ── Matching ──
 
 export function uploadResume(formData) {
@@ -80,6 +84,25 @@ export function submitJD(rawText) {
   return apiFetch('/jd/submit', {
     method: 'POST',
     body: JSON.stringify({ raw_text: rawText }),
+  });
+}
+
+export function scrapeJD(url) {
+  return apiFetch('/jd/scrape', {
+    method: 'POST',
+    body: JSON.stringify({ url }),
+  });
+}
+
+export function optimizeResumeBullets({ resumeId = null, jdId = null, bulletText = '', missingKeywords = [] } = {}) {
+  return apiFetch('/resume/optimize', {
+    method: 'POST',
+    body: JSON.stringify({
+      resume_id: resumeId,
+      jd_id: jdId,
+      bullet_text: bulletText,
+      missing_keywords: missingKeywords,
+    }),
   });
 }
 
