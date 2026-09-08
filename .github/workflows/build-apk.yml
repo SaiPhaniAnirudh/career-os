@@ -31,6 +31,9 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Accept Android SDK Licenses
+        run: yes | sdkmanager --licenses || true
+
       - name: Set up Node.js 20
         uses: actions/setup-node@v4
         with:
@@ -42,18 +45,16 @@ jobs:
           npm install
           npm run build
 
-      - name: Install Capacitor & Initialize Android
+      - name: Sync Capacitor Android
         run: |
           cd frontend
-          npm install @capacitor/core @capacitor/cli @capacitor/android
-          npx cap add android || true
           npx cap sync android
 
       - name: Build Android Debug APK with Gradle
         run: |
           cd frontend/android
           chmod +x ./gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Prepare APK Release Artifact
         run: |
