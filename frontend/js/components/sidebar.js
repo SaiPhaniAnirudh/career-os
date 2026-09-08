@@ -2,6 +2,7 @@
 import { navigate, currentRoute } from '../router.js';
 import { signOut, getUser } from '../auth.js';
 import { store } from '../state.js';
+import { showAppDownloadModal } from './app_download.js';
 
 const NAV_ITEMS = [
   { path: '/dashboard',    icon: '📊', label: 'Dashboard' },
@@ -43,6 +44,11 @@ export function renderSidebar() {
     </nav>
 
     <div class="sidebar-footer">
+      <button class="btn btn-secondary btn-sm" id="sidebar-app-btn"
+        style="width:100%;margin-bottom:var(--space-2);justify-content:flex-start;gap:var(--space-2);background:rgba(124,108,240,0.12);border-color:var(--border-accent);color:var(--accent-hover);font-size:11.5px">
+        📱 Install / Get App
+      </button>
+
       <div class="sidebar-user" id="sidebar-user-btn">
         <div class="sidebar-avatar">${initial}</div>
         <div class="sidebar-user-info">
@@ -64,6 +70,12 @@ export function renderSidebar() {
       navigate(path);
       closeMobileSidebar();
     });
+  });
+
+  // App Install / Download Modal
+  sidebar.querySelector('#sidebar-app-btn')?.addEventListener('click', () => {
+    showAppDownloadModal();
+    closeMobileSidebar();
   });
 
   // Sign out

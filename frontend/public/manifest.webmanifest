@@ -1,0 +1,57 @@
+{
+  "name": "Career OS — AI Career Command Center",
+  "short_name": "Career OS",
+  "description": "Your AI-powered career command center. Match resumes to job descriptions, practice mock interviews with AI feedback, and track applications.",
+  "start_url": "/#/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0f",
+  "theme_color": "#0a0a0f",
+  "orientation": "any",
+  "categories": ["productivity", "business", "education"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Resume Matcher",
+      "url": "/#/matcher",
+      "description": "Compare resume to job descriptions"
+    },
+    {
+      "name": "Mock Interview",
+      "url": "/#/interview",
+      "description": "Practice AI voice interviews"
+    },
+    {
+      "name": "Applications",
+      "url": "/#/applications",
+      "description": "Manage job application pipeline"
+    },
+    {
+      "name": "Peer Practice",
+      "url": "/#/peers",
+      "description": "1-on-1 Mock Interview Room"
+    }
+  ]
+}

@@ -136,6 +136,30 @@ async function init() {
     navigate('/dashboard');
   }
   startRouter('app-main');
+
+  // ── Register PWA Service Worker ──
+  if ('serviceWorker' in navigator && import.meta.env.PROD) {
+    navigator.serviceWorker.register('/sw.js')
+      .then((reg) => {
+        console.log('Career OS Service Worker registered with scope:', reg.scope);
+      })
+      .catch((err) => {
+        console.warn('Career OS Service Worker registration failed:', err);
+      });
+  }
+
+  // ── Track PWA Installation Prompt ──
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    window.deferredInstallPrompt = e;
+    window.dispatchEvent(new CustomEvent('pwa-installable'));
+  });
+
+  window.addEventListener('appinstalled', () => {
+    window.deferredInstallPrompt = null;
+    console.log('Career OS installed as a Progressive Web App!');
+  });
 }
 
 init();
+
