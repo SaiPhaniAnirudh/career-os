@@ -19,6 +19,9 @@ export function renderInterview(container) {
           <p style="color:var(--text-secondary)">Practice technical interviews with real-time AI voice & feedback</p>
         </div>
         <div style="display:flex;gap:var(--space-3);flex-wrap:wrap;align-items:center">
+          <button class="btn btn-ghost" id="whiteboard-btn" title="Open Interactive System Design Whiteboard">
+            📐 System Design Canvas
+          </button>
           <button class="btn btn-ghost" id="speech-toggle-btn" title="Toggle AI voice reading questions aloud">
             🔊 AI Voice: On
           </button>
@@ -69,7 +72,13 @@ export function renderInterview(container) {
   const feedbackBtn = container.querySelector('#feedback-btn');
   const historyBtn = container.querySelector('#history-btn');
   const speechToggleBtn = container.querySelector('#speech-toggle-btn');
+  const whiteboardBtn = container.querySelector('#whiteboard-btn');
   const micBtn = container.querySelector('#mic-btn');
+
+  // Whiteboard Canvas
+  whiteboardBtn?.addEventListener('click', () => {
+    openSystemDesignWhiteboard();
+  });
 
   // Speech Toggle
   speechToggleBtn?.addEventListener('click', () => {
@@ -444,3 +453,201 @@ ${transcriptLines || 'No conversation recorded.'}
   a.click();
   URL.revokeObjectURL(url);
 }
+
+function openSystemDesignWhiteboard() {
+  showModal({
+    title: '📐 System Design & Architecture Whiteboard',
+    confirmText: 'Done',
+    cancelText: 'Close',
+    onConfirm: (close) => close(),
+    bodyHTML: `
+      <div style="display:flex;flex-direction:column;gap:var(--space-3);min-width:320px;max-width:820px">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:var(--space-2);background:var(--bg-input);padding:var(--space-2) var(--space-3);border-radius:var(--radius-md);border:1px solid var(--border-subtle)">
+          <!-- Tool buttons -->
+          <div style="display:flex;gap:4px;flex-wrap:wrap" id="wb-tools">
+            <button class="btn btn-primary btn-sm wb-tool-btn" data-tool="pen" style="font-size:11px;padding:3px 8px">✏️ Pen</button>
+            <button class="btn btn-ghost btn-sm wb-tool-btn" data-tool="box" style="font-size:11px;padding:3px 8px">🔲 Service Box</button>
+            <button class="btn btn-ghost btn-sm wb-tool-btn" data-tool="db" style="font-size:11px;padding:3px 8px">🛢️ Database</button>
+            <button class="btn btn-ghost btn-sm wb-tool-btn" data-tool="arrow" style="font-size:11px;padding:3px 8px">➡️ Arrow</button>
+            <button class="btn btn-ghost btn-sm wb-tool-btn" data-tool="text" style="font-size:11px;padding:3px 8px">🔤 Label</button>
+          </div>
+
+          <!-- Color & Actions -->
+          <div style="display:flex;gap:var(--space-2);align-items:center">
+            <select class="input" id="wb-color" style="font-size:11px;padding:2px 6px;width:95px">
+              <option value="#ffffff" selected>White</option>
+              <option value="#8b5cf6">Purple</option>
+              <option value="#10b981">Green</option>
+              <option value="#06b6d4">Cyan</option>
+              <option value="#f43f5e">Red</option>
+            </select>
+            <button class="btn btn-ghost btn-sm" id="wb-clear-btn" style="font-size:11px;padding:3px 8px">🧹 Clear</button>
+            <button class="btn btn-secondary btn-sm" id="wb-save-btn" style="font-size:11px;padding:3px 8px">💾 Export PNG</button>
+          </div>
+        </div>
+
+        <!-- Canvas Container -->
+        <div style="position:relative;width:100%;border-radius:var(--radius-md);overflow:hidden;border:1px solid var(--border-subtle)">
+          <canvas id="design-canvas" width="800" height="460" style="background:#0f1117;display:block;width:100%;cursor:crosshair"></canvas>
+        </div>
+        <div style="font-size:10.5px;color:var(--text-tertiary);text-align:right">
+          Tip: Sketch microservices, load balancers, DBs, and event queues while answering questions.
+        </div>
+      </div>
+    `,
+  });
+
+  const modalEl = document.getElementById('modal-body');
+  const canvas = modalEl.querySelector('#design-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  let currentTool = 'pen';
+  let currentColor = '#ffffff';
+  let isDrawing = false;
+  let startX = 0;
+  let startY = 0;
+  let snapshot = null;
+
+  // Tool buttons
+  modalEl.querySelectorAll('.wb-tool-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      modalEl.querySelectorAll('.wb-tool-btn').forEach(b => {
+        b.classList.remove('btn-primary');
+        b.classList.add('btn-ghost');
+      });
+      btn.classList.remove('btn-ghost');
+      btn.classList.add('btn-primary');
+      currentTool = btn.dataset.tool;
+    });
+  });
+
+  // Color change
+  modalEl.querySelector('#wb-color')?.addEventListener('change', (e) => {
+    currentColor = e.target.value;
+  });
+
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY,
+    };
+  }
+
+  function start(e) {
+    isDrawing = true;
+    const pos = getPos(e);
+    startX = pos.x;
+    startY = pos.y;
+    snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+    ctx.strokeStyle = currentColor;
+    ctx.fillStyle = currentColor;
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    if (currentTool === 'pen') {
+      ctx.beginPath();
+      ctx.moveTo(startX, startY);
+    } else if (currentTool === 'text') {
+      const label = prompt('Enter service/node label:', 'Microservice');
+      if (label) {
+        ctx.font = '14px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillText(label, startX, startY);
+      }
+      isDrawing = false;
+    }
+  }
+
+  function draw(e) {
+    if (!isDrawing) return;
+    const pos = getPos(e);
+
+    if (currentTool === 'pen') {
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+    } else if (currentTool === 'box') {
+      ctx.putImageData(snapshot, 0, 0);
+      const w = pos.x - startX;
+      const h = pos.y - startY;
+      ctx.strokeRect(startX, startY, w, h);
+    } else if (currentTool === 'db') {
+      ctx.putImageData(snapshot, 0, 0);
+      const rx = Math.abs(pos.x - startX) / 2;
+      const ry = 12;
+      const cx = (startX + pos.x) / 2;
+      const topY = Math.min(startY, pos.y);
+      const botY = Math.max(startY, pos.y);
+
+      // Top ellipse
+      ctx.beginPath();
+      ctx.ellipse(cx, topY, rx, ry, 0, 0, 2 * Math.PI);
+      ctx.stroke();
+
+      // Sides
+      ctx.beginPath();
+      ctx.moveTo(cx - rx, topY);
+      ctx.lineTo(cx - rx, botY);
+      ctx.moveTo(cx + rx, topY);
+      ctx.lineTo(cx + rx, botY);
+      ctx.stroke();
+
+      // Bottom half-ellipse
+      ctx.beginPath();
+      ctx.ellipse(cx, botY, rx, ry, 0, 0, Math.PI);
+      ctx.stroke();
+    } else if (currentTool === 'arrow') {
+      ctx.putImageData(snapshot, 0, 0);
+      ctx.beginPath();
+      ctx.moveTo(startX, startY);
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+
+      // Arrow head
+      const angle = Math.atan2(pos.y - startY, pos.x - startX);
+      const headLen = 10;
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y);
+      ctx.lineTo(pos.x - headLen * Math.cos(angle - Math.PI / 6), pos.y - headLen * Math.sin(angle - Math.PI / 6));
+      ctx.moveTo(pos.x, pos.y);
+      ctx.lineTo(pos.x - headLen * Math.cos(angle + Math.PI / 6), pos.y - headLen * Math.sin(angle + Math.PI / 6));
+      ctx.stroke();
+    }
+  }
+
+  function stop() {
+    isDrawing = false;
+  }
+
+  canvas.addEventListener('mousedown', start);
+  canvas.addEventListener('mousemove', draw);
+  canvas.addEventListener('mouseup', stop);
+  canvas.addEventListener('mouseleave', stop);
+
+  canvas.addEventListener('touchstart', (e) => { e.preventDefault(); start(e); });
+  canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); });
+  canvas.addEventListener('touchend', stop);
+
+  // Clear button
+  modalEl.querySelector('#wb-clear-btn')?.addEventListener('click', () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    showToast('Canvas cleared', 'info');
+  });
+
+  // Save PNG button
+  modalEl.querySelector('#wb-save-btn')?.addEventListener('click', () => {
+    const dataUrl = canvas.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = `system-design-architecture-${new Date().toISOString().split('T')[0]}.png`;
+    a.click();
+    showToast('Diagram exported as PNG!', 'success');
+  });
+}
+

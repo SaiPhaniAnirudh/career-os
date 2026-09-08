@@ -37,6 +37,7 @@ export function startRouter(containerId) {
     }
 
     const path = currentRoute();
+    const basePath = path.split('?')[0] || '/';
 
     // Run cleanup from previous page
     if (typeof currentCleanup === 'function') {
@@ -44,7 +45,7 @@ export function startRouter(containerId) {
       currentCleanup = null;
     }
 
-    const handler = routes.get(path);
+    const handler = routes.get(basePath);
     if (handler) {
       container.innerHTML = '';
       container.classList.remove('fade-in');

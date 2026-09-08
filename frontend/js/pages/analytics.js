@@ -227,7 +227,7 @@ export async function renderAnalytics(container) {
       </div>
 
       <!-- Additional Insights Grid -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:var(--space-6)">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:var(--space-6);margin-bottom:var(--space-8)">
         <!-- Top Locations -->
         <div class="glass-card-static" style="padding:var(--space-5)">
           <h4 style="margin:0 0 var(--space-3)">Top Target Locations</h4>
@@ -264,9 +264,188 @@ export async function renderAnalytics(container) {
           </div>
         </div>
       </div>
+
+      <!-- Offer Comparison & Compensation Calculator -->
+      <div class="glass-card-static" style="padding:var(--space-6);margin-bottom:var(--space-8)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-4);flex-wrap:wrap;gap:var(--space-2)">
+          <div>
+            <h3 style="margin:0 0 var(--space-1)">💰 Offer Comparison & Total Compensation (TC) Calculator</h3>
+            <p style="margin:0;font-size:var(--text-xs);color:var(--text-secondary)">
+              Side-by-side breakdown of base salary, equity vesting, target bonus, and 4-year financial trajectory.
+            </p>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="reset-offers-btn">Reset Defaults</button>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:var(--space-6)">
+          <!-- Offer A -->
+          <div style="background:var(--bg-input);padding:var(--space-4);border-radius:var(--radius-lg);border:1px solid var(--border-subtle)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-3)">
+              <input class="input" id="off-a-name" value="Offer A (e.g. Enterprise)" style="font-weight:600;font-size:var(--text-sm);padding:var(--space-1) var(--space-2);width:70%">
+              <span style="font-size:var(--text-xs);color:var(--accent-solid);font-weight:600">Company A</span>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2);font-size:var(--text-xs)">
+              <div>
+                <label>Base Salary ($)</label>
+                <input class="input" id="off-a-base" type="number" value="145000" style="padding:var(--space-1) var(--space-2)">
+              </div>
+              <div>
+                <label>Target Bonus (%)</label>
+                <input class="input" id="off-a-bonus" type="number" value="15" style="padding:var(--space-1) var(--space-2)">
+              </div>
+              <div>
+                <label>Sign-on Bonus ($)</label>
+                <input class="input" id="off-a-signon" type="number" value="15000" style="padding:var(--space-1) var(--space-2)">
+              </div>
+              <div>
+                <label>4-Yr Equity Grant ($)</label>
+                <input class="input" id="off-a-equity" type="number" value="120000" style="padding:var(--space-1) var(--space-2)">
+              </div>
+            </div>
+
+            <div style="margin-top:var(--space-4);padding-top:var(--space-3);border-top:1px solid rgba(255,255,255,0.06)">
+              <div style="display:flex;justify-content:space-between;font-size:var(--text-xs);margin-bottom:4px">
+                <span style="color:var(--text-secondary)">Year 1 Total Comp:</span>
+                <strong id="off-a-y1" style="font-size:var(--text-base);color:var(--success)">$211,750</strong>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:var(--text-xs);margin-bottom:4px">
+                <span style="color:var(--text-secondary)">Annual Ongoing TC:</span>
+                <span id="off-a-annual" style="color:var(--text-primary)">$196,750 / yr</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:var(--text-xs)">
+                <span style="color:var(--text-secondary)">4-Year Cumulative:</span>
+                <strong id="off-a-4yr" style="color:var(--accent-solid)">$802,000</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Offer B -->
+          <div style="background:var(--bg-input);padding:var(--space-4);border-radius:var(--radius-lg);border:1px solid var(--border-subtle)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-3)">
+              <input class="input" id="off-b-name" value="Offer B (e.g. Growth Startup)" style="font-weight:600;font-size:var(--text-sm);padding:var(--space-1) var(--space-2);width:70%">
+              <span style="font-size:var(--text-xs);color:var(--accent-solid);font-weight:600">Company B</span>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2);font-size:var(--text-xs)">
+              <div>
+                <label>Base Salary ($)</label>
+                <input class="input" id="off-b-base" type="number" value="160000" style="padding:var(--space-1) var(--space-2)">
+              </div>
+              <div>
+                <label>Target Bonus (%)</label>
+                <input class="input" id="off-b-bonus" type="number" value="10" style="padding:var(--space-1) var(--space-2)">
+              </div>
+              <div>
+                <label>Sign-on Bonus ($)</label>
+                <input class="input" id="off-b-signon" type="number" value="25000" style="padding:var(--space-1) var(--space-2)">
+              </div>
+              <div>
+                <label>4-Yr Equity Grant ($)</label>
+                <input class="input" id="off-b-equity" type="number" value="80000" style="padding:var(--space-1) var(--space-2)">
+              </div>
+            </div>
+
+            <div style="margin-top:var(--space-4);padding-top:var(--space-3);border-top:1px solid rgba(255,255,255,0.06)">
+              <div style="display:flex;justify-content:space-between;font-size:var(--text-xs);margin-bottom:4px">
+                <span style="color:var(--text-secondary)">Year 1 Total Comp:</span>
+                <strong id="off-b-y1" style="font-size:var(--text-base);color:var(--success)">$221,000</strong>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:var(--text-xs);margin-bottom:4px">
+                <span style="color:var(--text-secondary)">Annual Ongoing TC:</span>
+                <span id="off-b-annual" style="color:var(--text-primary)">$196,000 / yr</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:var(--text-xs)">
+                <span style="color:var(--text-secondary)">4-Year Cumulative:</span>
+                <strong id="off-b-4yr" style="color:var(--accent-solid)">$809,000</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Delta comparison pill -->
+        <div id="offer-delta-pill" style="margin-top:var(--space-4);padding:var(--space-3);background:rgba(52,211,153,0.1);border-radius:var(--radius-md);font-size:var(--text-xs);color:var(--success);text-align:center;font-weight:600">
+          💡 Offer B provides +$9,250 (+4.4%) higher Year 1 Total Comp.
+        </div>
+      </div>
     `;
+
+    setupOfferCalculator(contentEl);
+  }
+
+  function setupOfferCalculator(el) {
+    const inputs = ['#off-a-base', '#off-a-bonus', '#off-a-signon', '#off-a-equity',
+                    '#off-b-base', '#off-b-bonus', '#off-b-signon', '#off-b-equity'];
+
+    function recalc() {
+      const aBase = Number(el.querySelector('#off-a-base')?.value) || 0;
+      const aBonus = Number(el.querySelector('#off-a-bonus')?.value) || 0;
+      const aSignon = Number(el.querySelector('#off-a-signon')?.value) || 0;
+      const aEquity = Number(el.querySelector('#off-a-equity')?.value) || 0;
+
+      const bBase = Number(el.querySelector('#off-b-base')?.value) || 0;
+      const bBonus = Number(el.querySelector('#off-b-bonus')?.value) || 0;
+      const bSignon = Number(el.querySelector('#off-b-signon')?.value) || 0;
+      const bEquity = Number(el.querySelector('#off-b-equity')?.value) || 0;
+
+      // Calculations
+      const aAnnualBonus = aBase * (aBonus / 100);
+      const aAnnualEquity = aEquity / 4;
+      const aY1 = aBase + aAnnualBonus + aSignon + aAnnualEquity;
+      const aAnnualOngoing = aBase + aAnnualBonus + aAnnualEquity;
+      const a4Yr = (aBase + aAnnualBonus) * 4 + aSignon + aEquity;
+
+      const bAnnualBonus = bBase * (bBonus / 100);
+      const bAnnualEquity = bEquity / 4;
+      const bY1 = bBase + bAnnualBonus + bSignon + bAnnualEquity;
+      const bAnnualOngoing = bBase + bAnnualBonus + bAnnualEquity;
+      const b4Yr = (bBase + bAnnualBonus) * 4 + bSignon + bEquity;
+
+      // Update DOM
+      el.querySelector('#off-a-y1').textContent = `$${Math.round(aY1).toLocaleString()}`;
+      el.querySelector('#off-a-annual').textContent = `$${Math.round(aAnnualOngoing).toLocaleString()} / yr`;
+      el.querySelector('#off-a-4yr').textContent = `$${Math.round(a4Yr).toLocaleString()}`;
+
+      el.querySelector('#off-b-y1').textContent = `$${Math.round(bY1).toLocaleString()}`;
+      el.querySelector('#off-b-annual').textContent = `$${Math.round(bAnnualOngoing).toLocaleString()} / yr`;
+      el.querySelector('#off-b-4yr').textContent = `$${Math.round(b4Yr).toLocaleString()}`;
+
+      const deltaPill = el.querySelector('#offer-delta-pill');
+      const diffY1 = bY1 - aY1;
+      const aName = el.querySelector('#off-a-name')?.value || 'Offer A';
+      const bName = el.querySelector('#off-b-name')?.value || 'Offer B';
+
+      if (Math.abs(diffY1) < 100) {
+        deltaPill.textContent = `⚖️ Both offers are virtually identical in Year 1 total compensation.`;
+      } else if (diffY1 > 0) {
+        const pct = aY1 > 0 ? ((diffY1 / aY1) * 100).toFixed(1) : 0;
+        deltaPill.textContent = `💡 ${bName} delivers +$${Math.round(diffY1).toLocaleString()} (+${pct}%) higher Year 1 Total Comp.`;
+      } else {
+        const absDiff = Math.abs(diffY1);
+        const pct = bY1 > 0 ? ((absDiff / bY1) * 100).toFixed(1) : 0;
+        deltaPill.textContent = `💡 ${aName} delivers +$${Math.round(absDiff).toLocaleString()} (+${pct}%) higher Year 1 Total Comp.`;
+      }
+    }
+
+    inputs.forEach(sel => {
+      el.querySelector(sel)?.addEventListener('input', recalc);
+    });
+
+    el.querySelector('#reset-offers-btn')?.addEventListener('click', () => {
+      el.querySelector('#off-a-base').value = '145000';
+      el.querySelector('#off-a-bonus').value = '15';
+      el.querySelector('#off-a-signon').value = '15000';
+      el.querySelector('#off-a-equity').value = '120000';
+
+      el.querySelector('#off-b-base').value = '160000';
+      el.querySelector('#off-b-bonus').value = '10';
+      el.querySelector('#off-b-signon').value = '25000';
+      el.querySelector('#off-b-equity').value = '80000';
+      recalc();
+    });
   }
 
   // Initial load
   await loadAnalytics();
 }
+

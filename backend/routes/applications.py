@@ -161,6 +161,8 @@ def create_application():
     location = (body.get("location") or "").strip() or None
     url = (body.get("url") or "").strip() or None
     notes = (body.get("notes") or "").strip() or None
+    follow_up_date = (body.get("follow_up_date") or "").strip() or None
+    timeline = body.get("timeline") or []
 
     base_row = {
         "user_id": user_id,
@@ -177,6 +179,10 @@ def create_application():
         extended["location"] = location
     if url is not None:
         extended["url"] = url
+    if follow_up_date is not None:
+        extended["follow_up_date"] = follow_up_date
+    if timeline:
+        extended["timeline"] = timeline
 
     full_row = {**base_row, **extended}
     sb = get_supabase()
@@ -185,7 +191,7 @@ def create_application():
     except Exception as exc:
         err_msg = str(getattr(exc, "message", exc)).lower()
         if "does not exist" in err_msg or getattr(exc, "code", "") == "42703":
-            # Remote schema lacks extended columns (salary/location/url) — fall back to base fields
+            # Remote schema lacks extended columns — fall back to base fields
             res = sb.table("applications").insert(base_row).execute()
         else:
             raise
@@ -201,13 +207,15 @@ def update_application(application_id):
     if "stage" in body and body["stage"] not in ALLOWED_STAGES:
         raise ApiError(f"'stage' must be one of {sorted(ALLOWED_STAGES)}.")
 
-    updatable_fields = {"company", "role", "stage", "deadline", "notes", "salary", "location", "url"}
+    updatable_fields = {"company", "role", "stage", "deadline", "notes", "salary", "location", "url", "follow_up_date", "timeline"}
     updates = {k: v for k, v in body.items() if k in updatable_fields}
     if not updates:
         raise ApiError("No valid fields to update.")
 
     if "deadline" in updates and not (updates["deadline"] or "").strip():
         updates["deadline"] = None
+    if "follow_up_date" in updates and not (updates["follow_up_date"] or "").strip():
+        updates["follow_up_date"] = None
 
     sb = get_supabase()
     try:

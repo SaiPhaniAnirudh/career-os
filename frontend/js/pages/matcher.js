@@ -1,5 +1,5 @@
 // ─── Career OS: Matcher Page ───
-import { uploadResume, uploadResumeText, submitJD, scrapeJD, optimizeResumeBullets, runMatch } from '../api.js';
+import { uploadResume, uploadResumeText, submitJD, scrapeJD, optimizeResumeBullets, runMatch, generateCoverLetter } from '../api.js';
 import { showToast } from '../components/toast.js';
 import { showModal } from '../components/modal.js';
 
@@ -298,8 +298,14 @@ function renderMatchResult(container, result, resumeId, jdId) {
           <button class="btn btn-primary btn-sm" id="optimize-bullets-btn">
             ✨ AI Bullet Optimizer
           </button>
+          <button class="btn btn-secondary btn-sm" id="cover-letter-btn">
+            📜 AI Cover Letter
+          </button>
+          <button class="btn btn-secondary btn-sm" id="export-resume-btn">
+            📄 Export ATS Resume
+          </button>
           <button class="btn btn-secondary btn-sm" id="export-match-btn">
-            📥 Export Report (.md)
+            📥 Export Report
           </button>
         </div>
       </div>
@@ -365,6 +371,14 @@ function renderMatchResult(container, result, resumeId, jdId) {
 
   resultEl.querySelector('#optimize-bullets-btn')?.addEventListener('click', () => {
     showBulletOptimizerModal(resumeId, jdId, missing);
+  });
+
+  resultEl.querySelector('#cover-letter-btn')?.addEventListener('click', () => {
+    showCoverLetterModal(resumeId, jdId, missing);
+  });
+
+  resultEl.querySelector('#export-resume-btn')?.addEventListener('click', () => {
+    showATSResumeModal(resumeId, jdId, missing);
   });
 }
 
@@ -548,3 +562,283 @@ ${suggList}
   a.click();
   URL.revokeObjectURL(url);
 }
+
+function showCoverLetterModal(resumeId, jdId, missingKeywords = []) {
+  let generatedLetter = '';
+
+  showModal({
+    title: '📜 AI Tailored Cover Letter Generator',
+    confirmText: 'Done',
+    cancelText: 'Close',
+    onConfirm: (close) => close(),
+    bodyHTML: `
+      <div style="display:flex;flex-direction:column;gap:var(--space-4);min-width:320px;max-width:720px">
+        <p style="font-size:var(--text-sm);color:var(--text-secondary);margin:0;line-height:var(--leading-relaxed)">
+          Generate a compelling, 3–4 paragraph cover letter tying accomplishments from your resume to this specific job description.
+        </p>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:var(--space-3)">
+          <div class="input-group">
+            <label for="cl-company" style="font-size:var(--text-xs)">Target Company</label>
+            <input class="input" id="cl-company" placeholder="e.g. Google, Stripe" style="font-size:var(--text-xs);padding:var(--space-2)">
+          </div>
+          <div class="input-group">
+            <label for="cl-role" style="font-size:var(--text-xs)">Target Role</label>
+            <input class="input" id="cl-role" placeholder="e.g. Full Stack Engineer" style="font-size:var(--text-xs);padding:var(--space-2)">
+          </div>
+          <div class="input-group">
+            <label for="cl-tone" style="font-size:var(--text-xs)">Letter Tone</label>
+            <select class="input" id="cl-tone" style="font-size:var(--text-xs);padding:var(--space-2)">
+              <option value="confident" selected>Confident & Results-Driven</option>
+              <option value="enthusiastic">Enthusiastic & Mission-Driven</option>
+              <option value="executive">Executive & Strategic</option>
+              <option value="technical">Deeply Technical & Analytical</option>
+              <option value="concise">Direct & Punchy</option>
+            </select>
+          </div>
+        </div>
+
+        <button class="btn btn-primary btn-sm" id="generate-cl-btn" style="width:100%;justify-content:center">
+          ⚡ Generate Tailored Cover Letter
+        </button>
+
+        <div id="cl-loading" style="display:none;text-align:center;padding:var(--space-6)">
+          <div class="spinner" style="margin:0 auto var(--space-2)"></div>
+          <div style="font-size:var(--text-xs);color:var(--text-secondary)">Crafting tailored cover letter with Groq AI...</div>
+        </div>
+
+        <div id="cl-result-section" style="display:none;display:flex;flex-direction:column;gap:var(--space-3)">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:var(--space-2)">
+            <label style="font-size:var(--text-xs);font-weight:var(--weight-semibold);color:var(--text-primary)">
+              Editable Cover Letter Draft:
+            </label>
+            <div style="display:flex;gap:var(--space-2)">
+              <button class="btn btn-ghost btn-sm" id="copy-cl-btn" style="font-size:var(--text-xs);padding:2px 8px">
+                📋 Copy
+              </button>
+              <button class="btn btn-ghost btn-sm" id="download-cl-btn" style="font-size:var(--text-xs);padding:2px 8px">
+                📥 Download .txt
+              </button>
+              <button class="btn btn-secondary btn-sm" id="print-cl-btn" style="font-size:var(--text-xs);padding:2px 8px">
+                🖨️ Print / PDF
+              </button>
+            </div>
+          </div>
+          <textarea class="input" id="cl-textarea" rows="12" style="font-size:var(--text-xs);line-height:var(--leading-relaxed);font-family:inherit;white-space:pre-wrap"></textarea>
+        </div>
+      </div>
+    `,
+  });
+
+  const modalBody = document.getElementById('modal-body');
+  const generateBtn = modalBody.querySelector('#generate-cl-btn');
+  const loadingEl = modalBody.querySelector('#cl-loading');
+  const resultSection = modalBody.querySelector('#cl-result-section');
+  const textarea = modalBody.querySelector('#cl-textarea');
+  const copyBtn = modalBody.querySelector('#copy-cl-btn');
+  const downloadBtn = modalBody.querySelector('#download-cl-btn');
+  const printBtn = modalBody.querySelector('#print-cl-btn');
+
+  generateBtn?.addEventListener('click', async () => {
+    const company = modalBody.querySelector('#cl-company').value.trim() || 'Hiring Team';
+    const role = modalBody.querySelector('#cl-role').value.trim() || 'Target Role';
+    const tone = modalBody.querySelector('#cl-tone').value;
+
+    generateBtn.disabled = true;
+    loadingEl.style.display = 'block';
+    resultSection.style.display = 'none';
+
+    try {
+      const res = await generateCoverLetter({
+        resumeId,
+        jdId,
+        company,
+        role,
+        tone,
+      });
+      generatedLetter = res.cover_letter || '';
+      textarea.value = generatedLetter;
+      resultSection.style.display = 'flex';
+      showToast('Cover letter generated!', 'success');
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      generateBtn.disabled = false;
+      loadingEl.style.display = 'none';
+    }
+  });
+
+  copyBtn?.addEventListener('click', () => {
+    const text = textarea.value.trim();
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    showToast('Cover letter copied to clipboard!', 'success');
+  });
+
+  downloadBtn?.addEventListener('click', () => {
+    const text = textarea.value.trim();
+    if (!text) return;
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `cover-letter-${new Date().toISOString().split('T')[0]}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  printBtn?.addEventListener('click', () => {
+    const text = textarea.value.trim();
+    if (!text) return;
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Cover Letter</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; padding: 40px; color: #111; max-width: 700px; margin: 0 auto; white-space: pre-wrap; font-size: 14px; }
+          </style>
+        </head>
+        <body>${escapeHtml(text)}</body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => { printWindow.print(); }, 250);
+  });
+}
+
+function showATSResumeModal(resumeId, jdId, missingKeywords = []) {
+  showModal({
+    title: '📄 ATS-Optimized Resume Exporter',
+    confirmText: 'Done',
+    cancelText: 'Close',
+    onConfirm: (close) => close(),
+    bodyHTML: `
+      <div style="display:flex;flex-direction:column;gap:var(--space-4);min-width:320px;max-width:760px">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:var(--space-2)">
+          <div style="font-size:var(--text-xs);color:var(--text-secondary)">
+            ATS-friendly single-column layout optimized for parsing systems (Workday, Greenhouse, Lever).
+          </div>
+          <div style="display:flex;gap:var(--space-2)">
+            <button class="btn btn-secondary btn-sm" id="ats-download-md-btn" style="font-size:var(--text-xs)">
+              📥 Download .md
+            </button>
+            <button class="btn btn-primary btn-sm" id="ats-print-btn" style="font-size:var(--text-xs)">
+              🖨️ Print / Save as PDF
+            </button>
+          </div>
+        </div>
+
+        <div id="ats-resume-sheet" class="printable-area" style="background:#ffffff;color:#111827;padding:32px;border-radius:var(--radius-md);border:1px solid var(--border-subtle);font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, sans-serif;font-size:13px;line-height:1.5">
+          <div style="text-align:center;border-bottom:2px solid #1f2937;padding-bottom:12px;margin-bottom:16px">
+            <h2 style="margin:0 0 4px;font-size:22px;letter-spacing:-0.5px;color:#111827">CANDIDATE NAME</h2>
+            <div style="font-size:12px;color:#4b5563">
+              Full Stack Engineer • city, country • candidate@email.com • linkedin.com/in/profile • github.com/username
+            </div>
+          </div>
+
+          <div style="margin-bottom:16px">
+            <div style="font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e5e7eb;padding-bottom:2px;margin-bottom:6px;color:#1f2937">
+              Professional Summary
+            </div>
+            <p style="margin:0;font-size:12.5px;color:#374151">
+              Results-driven software engineer with extensive experience designing, building, and deploying scalable distributed web applications, robust REST APIs, and event-driven architectures. Proven track record of improving latency by 35% and accelerating deployment cycles using modern CI/CD and cloud microservices.
+            </p>
+          </div>
+
+          <div style="margin-bottom:16px">
+            <div style="font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e5e7eb;padding-bottom:2px;margin-bottom:6px;color:#1f2937">
+              Core Technical Competencies
+            </div>
+            <div style="font-size:12.5px;color:#374151;display:flex;flex-wrap:wrap;gap:6px">
+              ${(missingKeywords.slice(0, 10).map(k => `<span style="background:#f3f4f6;padding:2px 8px;border-radius:4px;border:1px solid #e5e7eb;font-weight:500">${k}</span>`).join('')) || '<span style="background:#f3f4f6;padding:2px 8px;border-radius:4px">Python, JavaScript, React, SQL, Cloud Architecture</span>'}
+            </div>
+          </div>
+
+          <div style="margin-bottom:16px">
+            <div style="font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e5e7eb;padding-bottom:2px;margin-bottom:6px;color:#1f2937">
+              Professional Experience & Projects
+            </div>
+            <div style="margin-bottom:12px">
+              <div style="display:flex;justify-content:space-between;font-weight:600;font-size:13px;color:#111827">
+                <span>Senior Software Engineer — Tech Systems Corp</span>
+                <span style="color:#6b7280;font-weight:normal;font-size:12px">2023 – Present</span>
+              </div>
+              <ul style="margin:4px 0 0;padding-left:18px;color:#374151;font-size:12.5px;display:flex;flex-direction:column;gap:3px">
+                <li>Architected and migrated high-traffic core microservices, increasing throughput by 42% and slashing p99 latency from 450ms to 95ms.</li>
+                <li>Spearheaded containerization strategy utilizing Docker and Kubernetes, reducing build deployment times by 65%.</li>
+                <li>Collaborated across product and infrastructure teams to deliver high-availability distributed data pipelines processing 10M+ daily events.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div>
+            <div style="font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e5e7eb;padding-bottom:2px;margin-bottom:6px;color:#1f2937">
+              Education & Certifications
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;color:#374151">
+              <span><strong>Bachelor of Science in Computer Science</strong> — University</span>
+              <span style="color:#6b7280">Graduated with Honors</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `,
+  });
+
+  const modalBody = document.getElementById('modal-body');
+  const printBtn = modalBody.querySelector('#ats-print-btn');
+  const downloadMdBtn = modalBody.querySelector('#ats-download-md-btn');
+
+  printBtn?.addEventListener('click', () => {
+    const sheet = modalBody.querySelector('#ats-resume-sheet');
+    if (!sheet) return;
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>ATS Resume</title>
+          <style>
+            @page { margin: 15mm; size: A4; }
+            body { margin: 0; padding: 20px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #111; }
+          </style>
+        </head>
+        <body>${sheet.outerHTML}</body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => { printWindow.print(); }, 250);
+  });
+
+  downloadMdBtn?.addEventListener('click', () => {
+    const md = `# CANDIDATE NAME
+Full Stack Engineer • candidate@email.com
+
+## Professional Summary
+Results-driven software engineer with extensive experience designing, building, and deploying scalable distributed web applications, robust REST APIs, and event-driven architectures.
+
+## Core Technical Competencies
+${(missingKeywords.slice(0, 10).map(k => `- ${k}`).join('\n')) || '- Full Stack Engineering\n- REST APIs\n- Cloud Architecture'}
+
+## Professional Experience
+### Senior Software Engineer — Tech Systems Corp (2023 – Present)
+- Architected and migrated high-traffic core microservices, increasing throughput by 42%.
+- Spearheaded containerization strategy utilizing Docker, reducing build deployment times by 65%.
+
+## Education
+Bachelor of Science in Computer Science
+`;
+    const blob = new Blob([md], { type: 'text/markdown;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ats-resume-${new Date().toISOString().split('T')[0]}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+}
+

@@ -129,6 +129,21 @@ export function runMatch(resumeId, jdId) {
   });
 }
 
+export function generateCoverLetter({ resumeId = null, jdId = null, resumeText = '', jdText = '', company = '', role = '', tone = 'confident' } = {}) {
+  return apiFetch('/cover-letter', {
+    method: 'POST',
+    body: JSON.stringify({
+      resume_id: resumeId,
+      jd_id: jdId,
+      resume_text: resumeText,
+      jd_text: jdText,
+      company,
+      role,
+      tone,
+    }),
+  });
+}
+
 // ── Interview ──
 
 export function listInterviewSessions() {

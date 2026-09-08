@@ -360,3 +360,76 @@ Do not wrap in markdown or add conversational intro/outro text. Return only vali
         "keywords_targeted": missing_keywords[:8],
     }), 200
 
+
+@matching_bp.post("/cover-letter")
+@matching_bp.post("/matcher/cover-letter")
+@require_auth
+def generate_cover_letter():
+    user_id = g.user_id
+    body = request.get_json(silent=True) or {}
+
+    resume_id = body.get("resume_id")
+    jd_id = body.get("jd_id")
+    resume_text = (body.get("resume_text") or "").strip()
+    jd_text = (body.get("jd_text") or "").strip()
+    company = (body.get("company") or "").strip() or "Hiring Team"
+    role = (body.get("role") or "").strip() or "Target Role"
+    tone = (body.get("tone") or "confident").strip().lower()
+
+    sb = get_supabase()
+    if resume_id and not resume_text:
+        res = sb.table("resumes").select("raw_text").eq("id", resume_id).eq("user_id", user_id).execute()
+        if res.data:
+            resume_text = res.data[0].get("raw_text", "")
+
+    if jd_id and not jd_text:
+        jd_res = sb.table("job_descriptions").select("raw_text").eq("id", jd_id).eq("user_id", user_id).execute()
+        if jd_res.data:
+            jd_text = jd_res.data[0].get("raw_text", "")
+
+    if not resume_text and not jd_text:
+        raise ApiError("At least resume text or job description text is required.")
+
+    tone_descriptions = {
+        "confident": "assertive, accomplished, and results-driven with an emphasis on leadership and measurable outcomes",
+        "enthusiastic": "passionate, energetic, and culturally aligned with high excitement for company mission",
+        "executive": "strategic, high-level, visionary, focusing on business impact, ROI, and organizational scaling",
+        "technical": "deeply analytical, precise, highlighting technical architecture, stack mastery, and problem-solving",
+        "concise": "direct, punchy, bullet-oriented, and strictly to the point without boilerplate fluff",
+    }
+    tone_instruction = tone_descriptions.get(tone, tone_descriptions["confident"])
+
+    system_prompt = (
+        "You are an elite career strategist and executive speechwriter. "
+        "You craft highly targeted, authentic, and compelling cover letters that stand out "
+        "to hiring managers and recruiters. Avoid generic clichés (e.g. 'I am writing to apply...'). "
+        "Open with an attention-grabbing value statement, ground arguments in concrete quantifiable metrics from "
+        "the applicant's resume, and link them directly to the company's stated needs."
+    )
+
+    user_prompt = f"""Role: {role}
+Company: {company}
+Tone: {tone.capitalize()} ({tone_instruction})
+
+Job Description Context:
+{jd_text[:3000] if jd_text else 'Software Engineering & modern technical execution.'}
+
+Applicant Resume Context:
+{resume_text[:3000] if resume_text else 'Accomplished software engineer with full stack development experience.'}
+
+Write a high-impact, modern 3 to 4 paragraph cover letter.
+- Paragraph 1: An engaging, tailored opening stating why the candidate is exceptionally well-suited for {role} at {company}.
+- Paragraph 2-3: Evidence-backed deep dive highlighting 2-3 specific accomplishments from the resume that directly solve challenges described in the JD.
+- Paragraph 4: Confident, forward-looking call to action for a conversation.
+- Include candidate sign-off placeholder: [Your Name] and [Contact Details].
+
+Return the cover letter in clean markdown format."""
+
+    cover_letter = generate(user_prompt, system=system_prompt)
+    return jsonify({
+        "cover_letter": cover_letter.strip(),
+        "company": company,
+        "role": role,
+        "tone": tone,
+    }), 200
+
