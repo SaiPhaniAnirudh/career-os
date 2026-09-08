@@ -31,8 +31,10 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Accept Android SDK Licenses
-        run: yes | sdkmanager --licenses || true
+      - name: Install Android Platform 36 & Accept Licenses
+        run: |
+          yes | sdkmanager --licenses || true
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0" || true
 
       - name: Set up Node.js 22
         uses: actions/setup-node@v4
