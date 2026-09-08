@@ -15,6 +15,8 @@ jobs:
   build-apk:
     name: Build Android APK (Capacitor)
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout Source Code
@@ -69,6 +71,7 @@ jobs:
 
       - name: Create GitHub Release (If tagged or manual release)
         if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.release_tag != ''
+        continue-on-error: true
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.release_tag || github.ref_name }}
